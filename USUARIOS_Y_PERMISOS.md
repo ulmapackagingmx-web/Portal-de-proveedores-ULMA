@@ -26,10 +26,13 @@
 - **Subordinados:** usuarioA, usuarioB
 - **Permisos:**
   - ✅ Ver sus propios registros + registros de usuarioA y usuarioB
-  - ✅ Editar sus registros y los de sus subordinados
-  - ✅ Eliminar registros de sus subordinados (NO los propios)
-  - ✅ Autorizar/revertir estados de registros de subordinados
-  - ✅ Subir comprobantes de pago para subordinados
+  - ✅ Crear, editar sus registros y los de sus subordinados
+  - ✅ Eliminar registros de subordinados (solo si están en Pendiente)
+  - ✅ Eliminar sus propios registros (solo si están en Pendiente)
+  - ✅ Autorizar registros de subordinados (Pendiente → Autorizado)
+  - ✅ Rechazar registros de subordinados (Pendiente → Rechazado)
+  - ✅ Subir comprobantes de pago para subordinados (Autorizado → Pagado)
+  - ✅ Revertir estados de subordinados (Pagado → Autorizado → Pendiente)
   - ✅ Exportar a Excel (sus registros + subordinados)
   - ❌ NO puede ver registros de otros supervisores ni sus subordinados
 
@@ -40,10 +43,13 @@
 - **Subordinados:** usuarioC, usuarioD
 - **Permisos:**
   - ✅ Ver sus propios registros + registros de usuarioC y usuarioD
-  - ✅ Editar sus registros y los de sus subordinados
-  - ✅ Eliminar registros de sus subordinados (NO los propios)
-  - ✅ Autorizar/revertir estados de registros de subordinados
-  - ✅ Subir comprobantes de pago para subordinados
+  - ✅ Crear, editar sus registros y los de sus subordinados
+  - ✅ Eliminar registros de subordinados (solo si están en Pendiente)
+  - ✅ Eliminar sus propios registros (solo si están en Pendiente)
+  - ✅ Autorizar registros de subordinados (Pendiente → Autorizado)
+  - ✅ Rechazar registros de subordinados (Pendiente → Rechazado)
+  - ✅ Subir comprobantes de pago para subordinados (Autorizado → Pagado)
+  - ✅ Revertir estados de subordinados (Pagado → Autorizado → Pendiente)
   - ✅ Exportar a Excel (sus registros + subordinados)
   - ❌ NO puede ver registros de otros supervisores ni sus subordinados
 
@@ -61,7 +67,7 @@
   - ✅ Crear nuevos registros
   - ✅ Editar solo sus propios registros
   - ✅ Subir facturas PDF para sus registros
-  - ❌ NO puede eliminar registros
+  - ✅ Eliminar sus registros (solo si están en estado "Rechazado")
   - ❌ NO puede autorizar/cambiar estados
   - ❌ NO puede subir comprobantes de pago
   - ❌ NO puede exportar a Excel
