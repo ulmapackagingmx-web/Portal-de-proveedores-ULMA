@@ -693,7 +693,7 @@
 
                 let compBadge = row.comprobante_pago_pdf
                     ? `<a href="/api/descargar-comprobante-pago/${row.id}" target="_blank" class="bg-green-600 text-white px-2 py-1.5 rounded text-xs hover:bg-green-700 block w-full text-center shadow-sm transition"><i class="fas fa-receipt mr-1"></i> Ver Pago</a>`
-                    : ((userRole === 'admin' || userRole === 'supervisor') ? `<button onclick="uploadPDF(${row.id}, 'pago')" class="bg-green-100 hover:bg-green-200 text-green-800 px-2 py-1.5 rounded text-[10px] font-bold block w-full text-center shadow-sm transition"><i class="fas fa-upload mr-1"></i> Subir Pago</button>` : '');
+                    : (userRole === 'admin' ? `<button onclick="uploadPDF(${row.id}, 'pago')" class="bg-green-100 hover:bg-green-200 text-green-800 px-2 py-1.5 rounded text-[10px] font-bold block w-full text-center shadow-sm transition"><i class="fas fa-upload mr-1"></i> Subir Pago</button>` : '');
 
                 // SEMÁFORO DE ESTADOS (círculos más pequeños)
                 let semaforoHTML = '';
@@ -718,12 +718,17 @@
                             <div class="w-5 h-5 rounded-full bg-gray-300"></div>
                         </div>
                         <span class="text-xs font-bold text-yellow-600 block text-center"><i class="fas fa-check-circle"></i> Autorizado</span>`;
-                    botonesAdmin = (userRole === 'admin' || userRole === 'supervisor')
-                        ? `<div class="mt-2 grid grid-cols-2 gap-1">
+                    // Supervisores solo pueden revocar, NO pagar
+                    if (userRole === 'admin') {
+                        botonesAdmin = `<div class="mt-2 grid grid-cols-2 gap-1">
                             <button onclick="cambiarEstado(${row.id}, 'anterior')" class="bg-red-500 hover:bg-red-600 text-white px-1 py-1 rounded text-[9px] font-bold shadow-sm transition"><i class="fas fa-arrow-left"></i> Revocar</button>
                             <button onclick="cambiarEstado(${row.id}, 'siguiente')" class="bg-green-500 hover:bg-green-600 text-white px-1 py-1 rounded text-[9px] font-bold shadow-sm transition"><i class="fas fa-arrow-right"></i> Pagar</button>
-                           </div>` 
-                        : '';
+                           </div>`;
+                    } else if (userRole === 'supervisor') {
+                        botonesAdmin = `<button onclick="cambiarEstado(${row.id}, 'anterior')" class="mt-2 bg-red-500 hover:bg-red-600 text-white px-2 py-1.5 rounded text-[10px] font-bold uppercase shadow-sm w-full transition"><i class="fas fa-arrow-left mr-1"></i> Revocar</button>`;
+                    } else {
+                        botonesAdmin = '';
+                    }
                 } else if (row.estado_pago === 'Pagado') {
                     semaforoHTML = `
                         <div class="flex items-center justify-center space-x-1 mb-2">
@@ -732,7 +737,7 @@
                             <div class="w-5 h-5 rounded-full bg-green-500 shadow-lg border-2 border-green-700"></div>
                         </div>
                         <span class="text-xs font-bold text-green-700 block text-center"><i class="fas fa-check-double"></i> Pagado</span>`;
-                    botonesAdmin = (userRole === 'admin' || userRole === 'supervisor')
+                    botonesAdmin = userRole === 'admin'
                         ? `<button onclick="cambiarEstado(${row.id}, 'anterior')" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1.5 rounded text-[10px] font-bold uppercase shadow-sm w-full transition"><i class="fas fa-arrow-left mr-1"></i> Revertir</button>` 
                         : '';
                 }

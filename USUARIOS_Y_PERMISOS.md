@@ -31,9 +31,10 @@
   - ✅ Eliminar sus propios registros (solo si están en Pendiente)
   - ✅ Autorizar registros de subordinados (Pendiente → Autorizado)
   - ✅ Rechazar registros de subordinados (Pendiente → Rechazado)
-  - ✅ Subir comprobantes de pago para subordinados (Autorizado → Pagado)
-  - ✅ Revertir estados de subordinados (Pagado → Autorizado → Pendiente)
+  - ✅ Revertir estados de subordinados (Autorizado → Pendiente)
   - ✅ Exportar a Excel (sus registros + subordinados)
+  - ❌ NO puede cambiar a estado "Pagado"
+  - ❌ NO puede subir comprobantes de pago
   - ❌ NO puede ver registros de otros supervisores ni sus subordinados
 
 #### Supervisor 2
@@ -140,7 +141,8 @@
 | Eliminar registros de subordinados | ❌ | ✅ (si Pendiente) | ✅ (siempre) |
 | Autorizar/Rechazar estado | ❌ | ✅ (subordinados) | ✅ (todos) |
 | Subir factura PDF | ✅ (propios) | ✅ (propios + subordinados) | ✅ (todos) |
-| Subir comprobante de pago | ❌ | ✅ (subordinados) | ✅ (todos) |
+| Subir comprobante de pago | ❌ | ❌ | ✅ (todos) |
+| Cambiar a estado "Pagado" | ❌ | ❌ | ✅ (todos) |
 | Exportar a Excel | ❌ | ✅ | ✅ |
 | Reset BD | ❌ | ❌ | ✅ |
 
@@ -159,7 +161,8 @@
 2. Ve registros de `usuarioA` y `usuarioB`
 3. Revisa factura de `usuarioA`
 4. Click en "Autorizar" → Estado cambia a "Autorizado"
-5. Puede subir comprobante de pago → Estado cambia a "Pagado"
+5. Notifica a `admin` para que suba comprobante de pago
+6. `admin` sube comprobante → Estado cambia a "Pagado"
 
 ### Caso 3: Admin supervisa todo
 1. `admin` inicia sesión
@@ -192,7 +195,7 @@
    
    Opción A - APRUEBA:
    └─> Estado: Autorizado
-       └─> Sube comprobante de pago
+       └─> ADMIN sube comprobante de pago
            └─> Estado: Pagado
    
    Opción B - RECHAZA:

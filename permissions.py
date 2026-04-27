@@ -126,7 +126,7 @@ def puede_subir_comprobante_pago(username: str, registro_usuario: str, db: Sessi
     Verifica si el usuario puede subir comprobante de pago.
     
     - proveedor: NO puede subir comprobante de pago
-    - supervisor: puede subir comprobante de pago para sus subordinados
+    - supervisor: NO puede subir comprobante de pago
     - admin: puede subir comprobante de pago para cualquiera
     """
     usuario = db.query(DBUser).filter(DBUser.username == username).first()
@@ -134,16 +134,8 @@ def puede_subir_comprobante_pago(username: str, registro_usuario: str, db: Sessi
     if not usuario:
         return False
     
-    if usuario.role == "admin":
-        return True
-    
-    if usuario.role == "supervisor":
-        subordinados = usuario.subordinados.split(",") if usuario.subordinados else []
-        subordinados = [s.strip() for s in subordinados if s.strip()]
-        return registro_usuario in subordinados
-    
-    # proveedor no puede subir comprobante de pago
-    return False
+    # Solo admin puede subir comprobante de pago
+    return usuario.role == "admin"
 
 def puede_exportar(username: str, db: Session) -> bool:
     """
