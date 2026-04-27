@@ -1,0 +1,191 @@
+"""
+Sistema de permisos jerárquico para DataHub Ulma
+
+Roles:
+- proveedor: Solo puede ver/editar sus propios registros, no puede eliminar ni autorizar
+- supervisor: Puede ver/editar/eliminar/autorizar registros de sus subordinados
+- admin: Puede hacer todo con todos los registros
+"""
+
+from sqlalchemy.orm import Session
+from models import DBUser
+
+def obtener_usuarios_permitidos(username: str, db: Session) -> list:
+    """
+    Retorna la lista de usuarios cuyos registros puede ver el usuario actual.
+    
+    - proveedor: solo él mismo
+    - supervisor: él mismo + sus subordinados
+    - admin: todos los usuarios
+    """
+    usuario = db.query(DBUser).filter(DBUser.username == username).first()
+    
+    if not usuario:
+        return [username]
+    
+    if usuario.role == "admin":
+        # Admin puede ver todos los registros
+        todos_usuarios = db.query(DBUser).all()
+        return [u.username for u in todos_usuarios]
+    
+    elif usuario.role == "supervisor":
+        # Supervisor puede ver sus registros + los de sus subordinados
+        subordinados = usuario.subordinados.split(",") if usuario.subordinados else []
+        return [username] + [s.strip() for s in subordinados if s.strip()]
+    
+    else:  # proveedor
+        # Proveedor solo puede ver sus propios registros
+        return [username]
+
+def puede_editar(username: str, registro_usuario: str, db: Session) -> bool:
+    """
+    Verifica si el usuario puede editar un registro.
+    
+    - proveedor: solo sus propios registros
+    - supervisor: sus registros + los de sus subordinados
+    - admin: cualquier registro
+    """
+    usuario = db.query(DBUser).filter(DBUser.username == username).first()
+    
+    if not usuario:
+        return False
+    
+    if usuario.role == "admin":
+        return True
+    
+    if usuario.role == "supervisor":
+        subordinados = usuario.subordinados.split(",") if usuario.subordinados else []
+        subordinados = [s.strip() for s in subordinados if s.strip()]
+        return registro_usuario == username or registro_usuario in subordinados
+    
+    # proveedor
+    return registro_usuario == username
+
+def puede_eliminar(username: str, registro_usuario: str, estado_pago: str, db: Session) -> bool:
+    """
+    Verifica si el usuario puede eliminar un registro.
+    
+    - proveedor: puede eliminar sus propios registros si están en estado "Rechazado"
+    - supervisor: puede eliminar registros de subordinados y propios si están en "Pendiente"
+    - admin: puede eliminar cualquier registro en cualquier estado
+    """
+    usuario = db.query(DBUser).filter(DBUser.username == username).first()
+    
+    if not usuario:
+        return False
+    
+    if usuario.role == "admin":
+        return True
+    
+    if usuario.role == "supervisor":
+        subordinados = usuario.subordinados.split(",") if usuario.subordinados else []
+        subordinados = [s.strip() for s in subordinados if s.strip()]
+        
+        # Puede eliminar registros de subordinados si están en Pendiente
+        if registro_usuario in subordinados and estado_pago == "Pendiente":
+            return True
+        
+        # Puede eliminar sus propios registros si están en Pendiente
+        if registro_usuario == username and estado_pago == "Pendiente":
+            return True
+        
+        return False
+    
+    # proveedor puede eliminar sus propios registros si están Rechazados
+    if usuario.role == "proveedor":
+        return registro_usuario == username and estado_pago == "Rechazado"
+    
+    return False
+
+def puede_autorizar(username: str, registro_usuario: str, db: Session) -> bool:
+    """
+    Verifica si el usuario puede cambiar el estado de pago (autorizar/revertir).
+    
+    - proveedor: NO puede autorizar
+    - supervisor: puede autorizar registros de sus subordinados
+    - admin: puede autorizar cualquier registro
+    """
+    usuario = db.query(DBUser).filter(DBUser.username == username).first()
+    
+    if not usuario:
+        return False
+    
+    if usuario.role == "admin":
+        return True
+    
+    if usuario.role == "supervisor":
+        subordinados = usuario.subordinados.split(",") if usuario.subordinados else []
+        subordinados = [s.strip() for s in subordinados if s.strip()]
+        return registro_usuario in subordinados
+    
+    # proveedor no puede autorizar
+    return False
+
+def puede_subir_comprobante_pago(username: str, registro_usuario: str, db: Session) -> bool:
+    """
+    Verifica si el usuario puede subir comprobante de pago.
+    
+    - proveedor: NO puede subir comprobante de pago
+    - supervisor: puede subir comprobante de pago para sus subordinados
+    - admin: puede subir comprobante de pago para cualquiera
+    """
+    usuario = db.query(DBUser).filter(DBUser.username == username).first()
+    
+    if not usuario:
+        return False
+    
+    if usuario.role == "admin":
+        return True
+    
+    if usuario.role == "supervisor":
+        subordinados = usuario.subordinados.split(",") if usuario.subordinados else []
+        subordinados = [s.strip() for s in subordinados if s.strip()]
+        return registro_usuario in subordinados
+    
+    # proveedor no puede subir comprobante de pago
+    return False
+
+def puede_exportar(username: str, db: Session) -> bool:
+    """
+    Verifica si el usuario puede exportar a Excel.
+    
+    - proveedor: NO puede exportar
+    - supervisor: puede exportar
+    - admin: puede exportar
+    """
+    usuario = db.query(DBUser).filter(DBUser.username == username).first()
+    
+    if not usuario:
+        return False
+    
+    return usuario.role in ["admin", "supervisor"]
+
+def obtener_info_usuario(username: str, db: Session) -> dict:
+    """
+    Retorna información del usuario para el frontend.
+    """
+    usuario = db.query(DBUser).filter(DBUser.username == username).first()
+    
+    if not usuario:
+        return {
+            "username": username,
+            "role": "proveedor",
+            "subordinados": [],
+            "puede_eliminar": False,
+            "puede_autorizar": False,
+            "puede_exportar": False,
+            "puede_subir_pago": False
+        }
+    
+    subordinados = usuario.subordinados.split(",") if usuario.subordinados else []
+    subordinados = [s.strip() for s in subordinados if s.strip()]
+    
+    return {
+        "username": usuario.username,
+        "role": usuario.role,
+        "subordinados": subordinados,
+        "puede_eliminar": usuario.role in ["admin", "supervisor"],
+        "puede_autorizar": usuario.role in ["admin", "supervisor"],
+        "puede_exportar": usuario.role in ["admin", "supervisor"],
+        "puede_subir_pago": usuario.role in ["admin", "supervisor"]
+    }

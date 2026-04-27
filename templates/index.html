@@ -1,0 +1,797 @@
+
+<html lang="es">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal DataHub - Ulma</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .ulma-red { background-color: #E3000F; } 
+        .ulma-red-text { color: #E3000F; }
+        .ulma-red-hover:hover { background-color: #B3000A; }
+    </style>
+</head>
+<body class="text-gray-800 bg-gray-100 min-h-screen flex flex-col font-sans">
+    
+    <!-- PANTALLA DE LOGIN -->
+    <div id="login-screen" class="flex-grow flex items-center justify-center">
+        <div class="bg-white p-10 rounded-xl shadow-2xl w-full max-w-md border-t-8 ulma-red">
+            <div class="text-center mb-8 flex flex-col items-center">
+                <!-- LOGO ULMA OFICIAL VECTORIAL PERFECTO -->
+                <svg class="h-16 w-auto mb-2" viewBox="0 0 200 50" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="0" y="5" width="40" height="40" fill="#000000" />
+                    <path d="M 2 5 L 38 5 L 38 22 C 38 46, 2 46, 2 22 Z" fill="#FFFFFF" />
+                    <path d="M 11 5 L 29 5 L 29 18 C 29 35, 11 35, 11 18 Z" fill="#E3000F" />
+                    <text x="48" y="42" font-family="Arial Black, Impact, sans-serif" font-weight="900" font-size="44"
+                        fill="#000000" letter-spacing="-2">ULMA</text>
+                </svg>
+                <p class="text-sm font-bold text-gray-500 uppercase tracking-widest mt-2">DataHub Administrativo</p>
+            </div>
+            <form onsubmit="event.preventDefault(); login();">
+                <input id="username" type="text" placeholder="Usuario" class="w-full mb-4 px-4 py-3 border border-gray-300 rounded text-base focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600" required>
+                <input id="password" type="password" placeholder="Contraseña" class="w-full mb-6 px-4 py-3 border border-gray-300 rounded text-base focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600" required>
+                <button type="submit" class="w-full ulma-red ulma-red-hover text-white font-bold py-3 rounded transition-all uppercase text-base tracking-wide shadow-lg">Iniciar Sesión</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- PANTALLA DASHBOARD -->
+    <div id="dashboard-screen" class="hidden flex-grow flex flex-col">
+        <nav class="bg-black p-4 text-white shadow-md flex justify-between items-center px-6">
+            <div class="flex items-center">
+                <!-- LOGO ULMA NAVBAR (TEXTO BLANCO) -->
+                <svg class="h-8 w-auto mr-4" viewBox="0 0 200 50" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="0" y="5" width="40" height="40" fill="#000000" />
+                    <path d="M 2 5 L 38 5 L 38 22 C 38 46, 2 46, 2 22 Z" fill="#FFFFFF" />
+                    <path d="M 11 5 L 29 5 L 29 18 C 29 35, 11 35, 11 18 Z" fill="#E3000F" />
+                    <text x="48" y="42" font-family="Arial Black, Impact, sans-serif" font-weight="900" font-size="44"
+                        fill="#FFFFFF" letter-spacing="-2">ULMA</text>
+                </svg>
+                <span class="text-gray-400 font-medium text-lg border-l border-gray-600 pl-4 uppercase tracking-wider">DataHub</span>
+            </div>
+            <div>
+                <span id="user-greeting" class="mr-4 text-sm font-semibold text-gray-300"></span>
+                <button onclick="logout()" class="ulma-red ulma-red-hover px-4 py-2 rounded text-sm font-bold uppercase tracking-wide transition-colors">Salir</button>
+            </div>
+        </nav>
+
+        <div class="p-6 grid grid-cols-1 xl:grid-cols-6 gap-6 w-full h-full">
+            
+            <!-- BARRA LATERAL (ENTRADAS) -->
+            <div class="xl:col-span-1 space-y-4">
+                <div class="bg-white p-4 rounded shadow border-l-4 border-black">
+                    <h2 class="font-bold mb-2 text-sm uppercase"><i class="fas fa-file-code mr-1 text-gray-500"></i> XML (Múltiples)</h2>
+                    <input type="file" id="xml-file" accept=".xml" multiple class="text-sm mb-3 w-full text-gray-500 file:bg-gray-100 file:border-0 file:rounded file:px-3 file:py-1.5">
+                    <button onclick="uploadXML()" class="w-full bg-black hover:bg-gray-800 text-white py-2 rounded text-sm font-bold transition"><i class="fas fa-upload mr-1"></i> Procesar XML</button>
+                </div>
+                
+                <div class="bg-white p-4 rounded shadow border-l-4 border-black">
+                    <h2 class="font-bold mb-2 text-sm uppercase"><i class="fas fa-envelope mr-1 text-gray-500"></i> Texto/Correo</h2>
+                    <textarea id="text-input" rows="3" class="w-full text-sm p-2 border border-gray-300 rounded mb-3 focus:ring-1 focus:ring-black focus:outline-none" placeholder="Pagar a ULMA... $500.00"></textarea>
+                    <button onclick="uploadText()" class="w-full bg-black hover:bg-gray-800 text-white py-2 rounded text-sm font-bold transition">Extraer Datos</button>
+                </div>
+
+                <div class="bg-white p-4 rounded shadow border-l-4 border-black">
+                    <h2 class="font-bold mb-2 text-sm uppercase"><i class="fas fa-table mr-1 text-gray-500"></i> Excel Masivo</h2>
+                    <p class="text-xs text-gray-500 mb-2 leading-tight">Req: RFC, Nombre, Total, Centro, Fecha Pago, Folio, Moneda</p>
+                    <input type="file" id="excel-file" accept=".xlsx" class="text-sm mb-3 w-full text-gray-500 file:bg-gray-100 file:border-0 file:rounded file:px-3 file:py-1.5">
+                    <button onclick="uploadExcel()" class="w-full bg-black hover:bg-gray-800 text-white py-2 rounded text-sm font-bold transition">Cargar Layout</button>
+                </div>
+
+                <div class="bg-white p-4 rounded shadow border-l-4 border-black">
+                    <h2 class="font-bold mb-2 text-sm uppercase"><i class="fas fa-plus-circle mr-1 text-gray-500"></i> Registro Manual</h2>
+                    <button onclick="openManualModal()" class="w-full bg-black hover:bg-gray-800 text-white py-2 rounded text-sm font-bold transition"><i class="fas fa-keyboard mr-1"></i> Abrir Formulario</button>
+                </div>
+            </div>
+
+            <!-- ÁREA DE TABLA PRINCIPAL -->
+            <div class="xl:col-span-5 flex flex-col h-full">
+                <!-- CABECERA Y FILTROS -->
+                <div class="bg-white p-4 shadow rounded-t-lg border-b-2 border-gray-200">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-2xl font-black text-black leading-tight">REGISTROS CONSOLIDADOS</h2>
+                        <div class="flex space-x-2">
+                            <button onclick="openManualModal()" class="bg-white border-2 border-black text-black hover:bg-black hover:text-white px-3 py-1.5 rounded text-sm font-bold transition"><i class="fas fa-plus mr-1"></i> Manual</button>
+                            <button onclick="fetchData()" class="bg-gray-200 text-black hover:bg-gray-300 px-3 py-1.5 rounded text-sm font-bold transition"><i class="fas fa-sync"></i> Actualizar</button>
+                            <button id="btn-exportar" onclick="downloadExcel()" class="hidden ulma-red ulma-red-hover text-white px-3 py-1.5 rounded text-sm font-bold shadow transition"><i class="fas fa-download mr-1"></i> Exportar</button>
+                            <button id="btn-reset" onclick="resetDB()" class="hidden bg-red-900 hover:bg-red-950 text-white px-3 py-1.5 rounded text-sm font-bold shadow transition" title="Borrar BD"><i class="fas fa-skull-crossbones mr-1"></i> Reset BD</button>
+                        </div>
+                    </div>
+                    
+                    <div class="flex flex-col xl:flex-row justify-between items-center bg-gray-50 p-3 rounded border border-gray-200 gap-4">
+                        <div class="flex flex-wrap w-full xl:w-3/4 gap-3">
+                            <div class="relative flex-grow min-w-[250px]">
+                                <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                                <input type="text" id="filtro-texto" onkeyup="applyFilters()" placeholder="Buscar por RFC, Nombre, Centro, Folio..." class="w-full pl-9 pr-3 py-2 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-black">
+                            </div>
+                            <select id="filtro-origen" onchange="applyFilters()" class="border border-gray-300 py-2 px-3 rounded text-sm focus:ring-1 focus:ring-black min-w-[150px]">
+                                <option value="">Todos los Orígenes</option>
+                                <option value="XML">XML</option>
+                                <option value="CORREO">CORREO</option>
+                                <option value="EXCEL">EXCEL</option>
+                                <option value="MANUAL">MANUAL</option>
+                            </select>
+                            
+                            <div class="flex items-center space-x-2 bg-white px-3 py-1.5 rounded border border-gray-300">
+                                <span class="text-xs font-bold text-gray-500">DESDE:</span>
+                                <input type="date" id="filtro-fecha-inicio" onchange="applyFilters()" class="text-sm focus:outline-none bg-transparent">
+                            </div>
+                            <div class="flex items-center space-x-2 bg-white px-3 py-1.5 rounded border border-gray-300">
+                                <span class="text-xs font-bold text-gray-500">HASTA:</span>
+                                <input type="date" id="filtro-fecha-fin" onchange="applyFilters()" class="text-sm focus:outline-none bg-transparent">
+                            </div>
+                        </div>
+
+                        <div class="w-full xl:w-1/4 text-right bg-white px-5 py-3 rounded border border-gray-200 shadow-sm">
+                            <span class="text-xs font-bold text-gray-500 uppercase tracking-widest block mb-1">Sumatoria Mostrada</span>
+                            <span id="suma-total" class="text-3xl font-black text-black leading-none">$0.00</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white shadow rounded-b-lg overflow-hidden flex-grow">
+                    <div class="overflow-x-auto h-full">
+                        <table class="w-full text-left text-base">
+                            <thead class="bg-gray-200 text-gray-800 uppercase tracking-wider text-xs">
+                                <tr>
+                                    <th class="p-3 border-b border-gray-300 w-24">Origen</th>
+                                    <th class="p-3 border-b border-gray-300">Datos Entidad</th>
+                                    <th class="p-3 border-b border-gray-300 text-right">Importe Total</th>
+                                    <th class="p-3 border-b border-gray-300">Logística</th>
+                                    <th class="p-3 border-b border-gray-300 text-center w-32">Estado</th>
+                                    <th class="p-3 border-b border-gray-300 text-center w-32">Documentos</th>
+                                    <th class="p-3 border-b border-gray-300 text-center w-24">Config</th>
+                                </tr>
+                            </thead>
+                            <tbody id="data-table" class="text-gray-700 font-medium text-sm"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Edición -->
+    <div id="edit-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg shadow-2xl w-[500px] border-t-8 border-black max-h-[90vh] overflow-y-auto">
+            <h2 class="font-black text-xl mb-4 uppercase">Editar Registro</h2>
+            <input type="hidden" id="edit-id">
+            <div class="space-y-3">
+                <input type="text" id="edit-rfc" placeholder="RFC del Beneficiario" class="w-full border p-2 rounded text-sm">
+                <input type="text" id="edit-nombre" placeholder="Nombre del Beneficiario" class="w-full border p-2 rounded text-sm">
+                <input type="number" step="0.01" id="edit-total" placeholder="Importe Total" class="w-full border p-2 rounded text-sm">
+                <input type="text" id="edit-folio" placeholder="Folio / Referencia" class="w-full border p-2 rounded text-sm">
+                <div class="grid grid-cols-2 gap-3">
+                    <input type="date" id="edit-fecha" class="w-full border p-2 rounded text-sm">
+                    <select id="edit-moneda" class="w-full border p-2 rounded text-sm">
+                        <option value="MXN">MXN</option>
+                        <option value="USD">USD</option>
+                        <option value="EUR">EUR</option>
+                    </select>
+                </div>
+                
+                <!-- Asignación Dinámica de Centros de Costo - EDICIÓN -->
+                <div class="border-2 border-gray-300 rounded p-3 bg-gray-50">
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-2">Asignación de Centros de Costo</label>
+                    <div id="edit-centros-container" class="space-y-2"></div>
+                    <div class="mt-2 flex justify-between items-center">
+                        <button type="button" onclick="agregarCentroEdit()" class="text-xs bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded font-bold transition">
+                            <i class="fas fa-plus mr-1"></i> Agregar Centro
+                        </button>
+                        <span id="edit-total-porcentaje" class="text-sm font-bold">Total: 0%</span>
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-end mt-6 space-x-3">
+                <button onclick="document.getElementById('edit-modal').classList.add('hidden')" class="px-4 py-2 bg-gray-200 font-bold rounded text-sm">Cancelar</button>
+                <button onclick="saveEdit()" class="px-4 py-2 bg-black text-white font-bold rounded text-sm">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Registro Manual -->
+    <div id="manual-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg shadow-2xl w-[500px] border-t-8 border-black max-h-[90vh] overflow-y-auto">
+            <h2 class="font-black text-xl mb-4 uppercase">Registro Manual</h2>
+            <div class="space-y-3">
+                <input type="text" id="man-rfc" placeholder="RFC del Beneficiario" class="w-full border p-2 rounded text-sm">
+                <input type="text" id="man-nombre" placeholder="Nombre del Beneficiario" class="w-full border p-2 rounded text-sm">
+                <input type="number" step="0.01" id="man-total" placeholder="Importe Total" class="w-full border p-2 rounded text-sm">
+                <input type="text" id="man-folio" placeholder="Folio / Referencia" class="w-full border p-2 rounded text-sm">
+                <div class="grid grid-cols-2 gap-3">
+                    <input type="date" id="man-fecha" class="w-full border p-2 rounded text-sm">
+                    <select id="man-moneda" class="w-full border p-2 rounded text-sm">
+                        <option value="MXN">MXN</option>
+                        <option value="USD">USD</option>
+                        <option value="EUR">EUR</option>
+                    </select>
+                </div>
+                
+                <!-- Asignación Dinámica de Centros de Costo - MANUAL -->
+                <div class="border-2 border-gray-300 rounded p-3 bg-gray-50">
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-2">Asignación de Centros de Costo</label>
+                    <div id="man-centros-container" class="space-y-2"></div>
+                    <div class="mt-2 flex justify-between items-center">
+                        <button type="button" onclick="agregarCentroManual()" class="text-xs bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded font-bold transition">
+                            <i class="fas fa-plus mr-1"></i> Agregar Centro
+                        </button>
+                        <span id="man-total-porcentaje" class="text-sm font-bold">Total: 0%</span>
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-end mt-6">
+                <button onclick="document.getElementById('manual-modal').classList.add('hidden')" class="px-4 py-2 bg-gray-200 mr-3 rounded font-bold text-sm">Cancelar</button>
+                <button onclick="saveManual()" class="px-4 py-2 bg-black text-white rounded font-bold text-sm">Registrar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let authToken = localStorage.getItem("token");
+        let userRole = localStorage.getItem("role");
+        let globalData = []; 
+
+        // Subcatálogos por centro de costo
+        const subcatalogos = {
+            'Administración': ['SERVICIOS ADMINISTRATIVOS', 'CAPACITACION'],
+            'Comercial': ['SERVICIOS Y FERIAS'],
+            'Servicio': ['IMPORTACION Y MÁQUINAS']
+        };
+
+        // Contadores para IDs únicos
+        let manualCentroCounter = 0;
+        let editCentroCounter = 0;
+
+        window.onload = () => { if (authToken) showDashboard(); };
+
+        async function login() {
+            const formData = new URLSearchParams();
+            formData.append('username', document.getElementById("username").value);
+            formData.append('password', document.getElementById("password").value);
+            const res = await fetch('/token', { method: 'POST', body: formData });
+            if (res.ok) {
+                const data = await res.json();
+                authToken = data.access_token;
+                userRole = data.role;
+                localStorage.setItem("token", authToken);
+                localStorage.setItem("role", userRole);
+                showDashboard();
+            } else alert("Credenciales incorrectas");
+        }
+
+        function logout() { localStorage.clear(); location.reload(); }
+        
+        function showDashboard() { 
+            document.getElementById("login-screen").classList.add("hidden"); 
+            document.getElementById("dashboard-screen").classList.remove("hidden"); 
+            document.getElementById("user-greeting").innerText = (userRole === 'admin' ? "👑 " : "👤 ") + localStorage.getItem("token");
+            
+            if(userRole === 'admin') {
+                document.getElementById('btn-exportar').classList.remove('hidden');
+                document.getElementById('btn-reset').classList.remove('hidden');
+            } else {
+                document.getElementById('btn-exportar').classList.add('hidden');
+                document.getElementById('btn-reset').classList.add('hidden');
+            }
+            fetchData(); 
+        }
+
+        async function uploadXML() { 
+            const input = document.getElementById('xml-file');
+            if (input.files.length === 0) return alert("Selecciona al menos un archivo XML");
+            const fd = new FormData(); 
+            for (let i = 0; i < input.files.length; i++) fd.append('files', input.files[i]);
+            await fetch('/api/subir-xml', { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` }, body: fd });
+            input.value = ""; fetchData(); 
+        }
+
+        async function uploadExcel() { 
+            const file = document.getElementById('excel-file').files[0];
+            if (!file) return alert("Selecciona un archivo");
+            const fd = new FormData(); fd.append('file', file);
+            await fetch('/api/subir-excel', { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` }, body: fd });
+            document.getElementById('excel-file').value = ""; fetchData();
+        }
+
+        async function uploadText() {
+            const txt = document.getElementById("text-input").value;
+            const fd = new FormData(); fd.append("texto_correo", txt);
+            await fetch('/api/subir-texto', { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` }, body: fd });
+            document.getElementById("text-input").value = ""; fetchData();
+        }
+
+        // ========== FUNCIONES PARA CENTROS DE COSTO DINÁMICOS - MANUAL ==========
+        function openManualModal() {
+            document.getElementById('manual-modal').classList.remove('hidden');
+            manualCentroCounter = 0;
+            document.getElementById('man-centros-container').innerHTML = '';
+            agregarCentroManual(); // Agregar el primer centro automáticamente
+        }
+
+        function agregarCentroManual() {
+            const container = document.getElementById('man-centros-container');
+            const id = manualCentroCounter++;
+            
+            const div = document.createElement('div');
+            div.id = `man-centro-${id}`;
+            div.className = 'flex gap-2 items-center bg-white p-2 rounded border border-gray-300';
+            div.innerHTML = `
+                <select onchange="updateSubcatalogoManual(${id})" class="w-32 border border-gray-300 p-1.5 rounded text-xs" id="man-centro-select-${id}">
+                    <option value="">Centro</option>
+                    <option value="Administración">Administración</option>
+                    <option value="Comercial">Comercial</option>
+                    <option value="Servicio">Servicio</option>
+                </select>
+                <select class="w-32 border border-gray-300 p-1.5 rounded text-xs" id="man-subcatalogo-${id}">
+                    <option value="">Subcatálogo</option>
+                </select>
+                <input type="number" min="0" max="100" step="0.01" placeholder="%" onchange="calcularTotalManual()" class="w-16 border border-gray-300 p-1.5 rounded text-xs text-center" id="man-porcentaje-${id}">
+                <button type="button" onclick="eliminarCentroManual(${id})" class="text-red-500 hover:text-red-700 px-2">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            container.appendChild(div);
+            calcularTotalManual();
+        }
+
+        function updateSubcatalogoManual(id) {
+            const centro = document.getElementById(`man-centro-select-${id}`).value;
+            const subSelect = document.getElementById(`man-subcatalogo-${id}`);
+            subSelect.innerHTML = '<option value="">Subcatálogo</option>';
+            if (centro && subcatalogos[centro]) {
+                subcatalogos[centro].forEach(sub => {
+                    subSelect.innerHTML += `<option value="${sub}">${sub}</option>`;
+                });
+            }
+        }
+
+        function eliminarCentroManual(id) {
+            const elem = document.getElementById(`man-centro-${id}`);
+            if (elem) elem.remove();
+            calcularTotalManual();
+        }
+
+        function calcularTotalManual() {
+            let total = 0;
+            const container = document.getElementById('man-centros-container');
+            const inputs = container.querySelectorAll('input[type="number"]');
+            inputs.forEach(input => {
+                const val = parseFloat(input.value) || 0;
+                total += val;
+            });
+            const totalSpan = document.getElementById('man-total-porcentaje');
+            totalSpan.textContent = `Total: ${total.toFixed(2)}%`;
+            totalSpan.className = total === 100 ? 'text-sm font-bold text-green-600' : 'text-sm font-bold text-red-600';
+        }
+
+        function obtenerCentrosManual() {
+            const centros = [];
+            const container = document.getElementById('man-centros-container');
+            const divs = container.querySelectorAll('[id^="man-centro-"]');
+            
+            divs.forEach(div => {
+                const id = div.id.split('-')[2];
+                const centroSelect = document.getElementById(`man-centro-select-${id}`);
+                const subcatalogoSelect = document.getElementById(`man-subcatalogo-${id}`);
+                const porcentajeInput = document.getElementById(`man-porcentaje-${id}`);
+                
+                if (centroSelect && subcatalogoSelect && porcentajeInput) {
+                    const centro = centroSelect.value;
+                    const subcatalogo = subcatalogoSelect.value;
+                    const porcentaje = parseFloat(porcentajeInput.value) || 0;
+                    
+                    if (centro && porcentaje > 0) {
+                        centros.push({ centro, subcatalogo, porcentaje });
+                    }
+                }
+            });
+            return centros;
+        }
+
+        async function saveManual() {
+            const centros = obtenerCentrosManual();
+            
+            if (centros.length === 0) {
+                alert('⚠️ Debes agregar al menos un centro de costo con porcentaje.');
+                return;
+            }
+            
+            const totalPorcentaje = centros.reduce((sum, c) => sum + c.porcentaje, 0);
+            if (Math.abs(totalPorcentaje - 100) > 0.01) {
+                alert('⚠️ ERROR: Los porcentajes deben sumar exactamente 100%.\n\nActualmente suman: ' + totalPorcentaje.toFixed(2) + '%');
+                return;
+            }
+
+            // Construir string de porcentajes
+            let porcentajeStr = '';
+            if (centros.length === 1 && centros[0].porcentaje === 100) {
+                porcentajeStr = '100%';
+            } else {
+                porcentajeStr = centros.map(c => `${c.centro}:${c.porcentaje}%`).join(',');
+            }
+
+            const body = JSON.stringify({
+                rfc: document.getElementById('man-rfc').value || 'SIN RFC',
+                nombre: document.getElementById('man-nombre').value || 'MANUAL',
+                total: parseFloat(document.getElementById('man-total').value || 0),
+                folio: document.getElementById('man-folio').value || 'S/F',
+                centro: centros[0].centro,
+                subcatalogo: centros[0].subcatalogo,
+                porcentaje: porcentajeStr,
+                moneda: document.getElementById('man-moneda').value || 'MXN',
+                fecha: document.getElementById('man-fecha').value || 'POR DEFINIR'
+            });
+            
+            await fetch('/api/subir-manual', { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' }, body });
+            document.getElementById('manual-modal').classList.add('hidden');
+            
+            // Limpiar formulario
+            document.getElementById('man-rfc').value = '';
+            document.getElementById('man-nombre').value = '';
+            document.getElementById('man-total').value = '';
+            document.getElementById('man-folio').value = '';
+            document.getElementById('man-moneda').value = 'MXN';
+            document.getElementById('man-fecha').value = '';
+            document.getElementById('man-centros-container').innerHTML = '';
+            
+            fetchData();
+        }
+
+        // ========== FUNCIONES PARA CENTROS DE COSTO DINÁMICOS - EDICIÓN ==========
+        function agregarCentroEdit() {
+            const container = document.getElementById('edit-centros-container');
+            const id = editCentroCounter++;
+            
+            const div = document.createElement('div');
+            div.id = `edit-centro-${id}`;
+            div.className = 'flex gap-2 items-center bg-white p-2 rounded border border-gray-300';
+            div.innerHTML = `
+                <select onchange="updateSubcatalogoEdit(${id})" class="w-32 border border-gray-300 p-1.5 rounded text-xs" id="edit-centro-select-${id}">
+                    <option value="">Centro</option>
+                    <option value="Administración">Administración</option>
+                    <option value="Comercial">Comercial</option>
+                    <option value="Servicio">Servicio</option>
+                </select>
+                <select class="w-32 border border-gray-300 p-1.5 rounded text-xs" id="edit-subcatalogo-${id}">
+                    <option value="">Subcatálogo</option>
+                </select>
+                <input type="number" min="0" max="100" step="0.01" placeholder="%" onchange="calcularTotalEdit()" class="w-16 border border-gray-300 p-1.5 rounded text-xs text-center" id="edit-porcentaje-${id}">
+                <button type="button" onclick="eliminarCentroEdit(${id})" class="text-red-500 hover:text-red-700 px-2">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            container.appendChild(div);
+            calcularTotalEdit();
+        }
+
+        function updateSubcatalogoEdit(id) {
+            const centro = document.getElementById(`edit-centro-select-${id}`).value;
+            const subSelect = document.getElementById(`edit-subcatalogo-${id}`);
+            subSelect.innerHTML = '<option value="">Subcatálogo</option>';
+            if (centro && subcatalogos[centro]) {
+                subcatalogos[centro].forEach(sub => {
+                    subSelect.innerHTML += `<option value="${sub}">${sub}</option>`;
+                });
+            }
+        }
+
+        function eliminarCentroEdit(id) {
+            const elem = document.getElementById(`edit-centro-${id}`);
+            if (elem) elem.remove();
+            calcularTotalEdit();
+        }
+
+        function calcularTotalEdit() {
+            let total = 0;
+            const container = document.getElementById('edit-centros-container');
+            const inputs = container.querySelectorAll('input[type="number"]');
+            inputs.forEach(input => {
+                const val = parseFloat(input.value) || 0;
+                total += val;
+            });
+            const totalSpan = document.getElementById('edit-total-porcentaje');
+            totalSpan.textContent = `Total: ${total.toFixed(2)}%`;
+            totalSpan.className = total === 100 ? 'text-sm font-bold text-green-600' : 'text-sm font-bold text-red-600';
+        }
+
+        function obtenerCentrosEdit() {
+            const centros = [];
+            const container = document.getElementById('edit-centros-container');
+            const divs = container.querySelectorAll('[id^="edit-centro-"]');
+            
+            divs.forEach(div => {
+                const id = div.id.split('-')[2];
+                const centroSelect = document.getElementById(`edit-centro-select-${id}`);
+                const subcatalogoSelect = document.getElementById(`edit-subcatalogo-${id}`);
+                const porcentajeInput = document.getElementById(`edit-porcentaje-${id}`);
+                
+                if (centroSelect && subcatalogoSelect && porcentajeInput) {
+                    const centro = centroSelect.value;
+                    const subcatalogo = subcatalogoSelect.value;
+                    const porcentaje = parseFloat(porcentajeInput.value) || 0;
+                    
+                    if (centro && porcentaje > 0) {
+                        centros.push({ centro, subcatalogo, porcentaje });
+                    }
+                }
+            });
+            return centros;
+        }
+
+        async function openEdit(id) {
+            const registro = globalData.find(r => r.id === id);
+            if (!registro) return;
+            
+            document.getElementById('edit-id').value = id;
+            document.getElementById('edit-rfc').value = registro.remitente_rfc || '';
+            document.getElementById('edit-nombre').value = registro.nombre || '';
+            document.getElementById('edit-total').value = registro.total || '';
+            document.getElementById('edit-folio').value = registro.uuid_folio || '';
+            document.getElementById('edit-fecha').value = registro.fecha_pago !== 'POR DEFINIR' ? registro.fecha_pago : '';
+            document.getElementById('edit-moneda').value = registro.moneda || 'MXN';
+            
+            // Limpiar y cargar centros de costo
+            editCentroCounter = 0;
+            const container = document.getElementById('edit-centros-container');
+            container.innerHTML = '';
+            
+            // Parsear porcentajes existentes
+            const porcentajeStr = registro.porcentaje_centro || '100%';
+            if (porcentajeStr === '100%') {
+                agregarCentroEdit();
+                document.getElementById(`edit-centro-select-0`).value = registro.centro_costo || '';
+                updateSubcatalogoEdit(0);
+                if (registro.subcatalogo_centro) {
+                    document.getElementById(`edit-subcatalogo-0`).value = registro.subcatalogo_centro;
+                }
+                document.getElementById(`edit-porcentaje-0`).value = 100;
+            } else {
+                // Parsear formato "Administración:50%,Comercial:50%"
+                const partes = porcentajeStr.split(',');
+                partes.forEach(parte => {
+                    const match = parte.match(/([^:]+):(\d+(?:\.\d+)?)%/);
+                    if (match) {
+                        agregarCentroEdit();
+                        const idx = editCentroCounter - 1;
+                        document.getElementById(`edit-centro-select-${idx}`).value = match[1];
+                        updateSubcatalogoEdit(idx);
+                        document.getElementById(`edit-porcentaje-${idx}`).value = parseFloat(match[2]);
+                    }
+                });
+            }
+            
+            calcularTotalEdit();
+            document.getElementById('edit-modal').classList.remove('hidden');
+        }
+
+        async function saveEdit() {
+            const id = document.getElementById('edit-id').value;
+            const centros = obtenerCentrosEdit();
+            
+            if (centros.length === 0) {
+                alert('⚠️ Debes agregar al menos un centro de costo con porcentaje.');
+                return;
+            }
+            
+            const totalPorcentaje = centros.reduce((sum, c) => sum + c.porcentaje, 0);
+            if (Math.abs(totalPorcentaje - 100) > 0.01) {
+                alert('⚠️ ERROR: Los porcentajes deben sumar exactamente 100%.\n\nActualmente suman: ' + totalPorcentaje.toFixed(2) + '%');
+                return;
+            }
+
+            // Construir string de porcentajes
+            let porcentajeStr = '';
+            if (centros.length === 1 && centros[0].porcentaje === 100) {
+                porcentajeStr = '100%';
+            } else {
+                porcentajeStr = centros.map(c => `${c.centro}:${c.porcentaje}%`).join(',');
+            }
+            
+            const body = JSON.stringify({ 
+                rfc: document.getElementById('edit-rfc').value,
+                nombre: document.getElementById('edit-nombre').value,
+                total: parseFloat(document.getElementById('edit-total').value),
+                folio: document.getElementById('edit-folio').value,
+                centro_costo: centros[0].centro, 
+                subcatalogo: centros[0].subcatalogo,
+                porcentaje_centro: porcentajeStr,
+                fecha_pago: document.getElementById('edit-fecha').value,
+                moneda: document.getElementById('edit-moneda').value
+            });
+            
+            await fetch(`/api/documentos/${id}`, { method: 'PUT', headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' }, body });
+            document.getElementById('edit-modal').classList.add('hidden');
+            fetchData();
+        }
+
+        async function uploadPDF(id, type='factura') {
+            const input = document.createElement('input'); input.type = 'file'; input.accept = '.pdf';
+            input.onchange = async e => {
+                const fd = new FormData(); fd.append("file", e.target.files[0]);
+                const endpoint = type === 'factura' ? `/api/subir-pdf/${id}` : `/api/subir-comprobante-pago/${id}`;
+                await fetch(endpoint, { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` }, body: fd });
+                fetchData();
+            };
+            input.click();
+        }
+
+        async function cambiarEstado(id, direccion) {
+            const endpoint = direccion === 'siguiente' ? `/api/avanzar-estado/${id}` : `/api/retroceder-estado/${id}`;
+            await fetch(endpoint, { method: 'PUT', headers: { 'Authorization': `Bearer ${authToken}` } });
+            fetchData();
+        }
+
+        async function resetDB() {
+            if(confirm("¡PELIGRO! ¿Estás seguro de que quieres borrar TODA la base de datos?")) {
+                if(confirm("¿Absolutamente seguro?")) {
+                    await fetch('/api/reset-db', { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` } });
+                    alert("Base de datos reiniciada. Inicia sesión nuevamente.");
+                    logout();
+                }
+            }
+        }
+
+        async function fetchData() {
+            const res = await fetch('/api/ver-datos', { headers: { 'Authorization': `Bearer ${authToken}` } });
+            if (!res.ok) return logout();
+            const data = await res.json();
+            globalData = data.registros; 
+            applyFilters(); 
+        }
+
+        function applyFilters() {
+            const txt = document.getElementById("filtro-texto").value.toLowerCase();
+            const org = document.getElementById("filtro-origen").value;
+            const fInicio = document.getElementById("filtro-fecha-inicio").value;
+            const fFin = document.getElementById("filtro-fecha-fin").value;
+
+            const filtrados = globalData.filter(row => {
+                const matchTxt = (
+                    (row.nombre && row.nombre.toLowerCase().includes(txt)) ||
+                    (row.remitente_rfc && row.remitente_rfc.toLowerCase().includes(txt)) ||
+                    (row.uuid_folio && row.uuid_folio.toLowerCase().includes(txt)) ||
+                    (row.centro_costo && row.centro_costo.toLowerCase().includes(txt))
+                );
+                
+                const matchOrg = org === "" || row.tipo === org;
+
+                let matchFecha = true;
+                if (fInicio || fFin) {
+                    if (row.fecha_pago === 'POR DEFINIR' || !row.fecha_pago) {
+                        matchFecha = false; 
+                    } else {
+                        const rowFecha = new Date(row.fecha_pago + 'T00:00:00'); 
+                        if (fInicio && rowFecha < new Date(fInicio + 'T00:00:00')) matchFecha = false;
+                        if (fFin && rowFecha > new Date(fFin + 'T23:59:59')) matchFecha = false;
+                    }
+                }
+
+                return matchTxt && matchOrg && matchFecha;
+            });
+
+            renderTable(filtrados);
+        }
+
+        function renderTable(dataArray) {
+            const tbody = document.getElementById("data-table"); 
+            tbody.innerHTML = "";
+            let sumaFinal = 0;
+            
+            dataArray.forEach(row => {
+                sumaFinal += row.total; 
+
+                let colorOrigen = row.tipo === 'XML' ? 'bg-green-100 text-green-800 border-green-200' : 
+                                  row.tipo === 'EXCEL' ? 'bg-blue-100 text-blue-800 border-blue-200' : 
+                                  row.tipo === 'CORREO' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' : 'bg-gray-200 text-gray-800 border-gray-300';
+                
+                let facBadge = row.comprobante_pdf 
+                    ? `<a href="/api/descargar-pdf/${row.id}" target="_blank" class="bg-gray-800 text-white px-2 py-1.5 rounded text-xs hover:bg-black mb-1.5 block w-full text-center shadow-sm transition"><i class="fas fa-file-pdf text-red-500 mr-1"></i> Ver Fac.</a>` 
+                    : `<button onclick="uploadPDF(${row.id}, 'factura')" class="bg-blue-100 hover:bg-blue-200 text-blue-800 px-2 py-1.5 rounded text-[10px] font-bold block mb-1.5 w-full text-center shadow-sm transition"><i class="fas fa-upload mr-1"></i> Subir Fac.</button>`;
+
+                let compBadge = row.comprobante_pago_pdf
+                    ? `<a href="/api/descargar-comprobante-pago/${row.id}" target="_blank" class="bg-green-600 text-white px-2 py-1.5 rounded text-xs hover:bg-green-700 block w-full text-center shadow-sm transition"><i class="fas fa-receipt mr-1"></i> Ver Pago</a>`
+                    : (userRole === 'admin' ? `<button onclick="uploadPDF(${row.id}, 'pago')" class="bg-green-100 hover:bg-green-200 text-green-800 px-2 py-1.5 rounded text-[10px] font-bold block w-full text-center shadow-sm transition"><i class="fas fa-upload mr-1"></i> Subir Pago</button>` : '');
+
+                // SEMÁFORO DE ESTADOS (círculos más pequeños)
+                let semaforoHTML = '';
+                let botonesAdmin = '';
+                
+                if (row.estado_pago === 'Pendiente') {
+                    semaforoHTML = `
+                        <div class="flex items-center justify-center space-x-1 mb-2">
+                            <div class="w-5 h-5 rounded-full bg-red-500 shadow-lg border-2 border-red-700"></div>
+                            <div class="w-5 h-5 rounded-full bg-gray-300"></div>
+                            <div class="w-5 h-5 rounded-full bg-gray-300"></div>
+                        </div>
+                        <span class="text-xs font-bold text-red-700 block text-center"><i class="fas fa-clock"></i> Pendiente</span>`;
+                    botonesAdmin = userRole === 'admin' 
+                        ? `<button onclick="cambiarEstado(${row.id}, 'siguiente')" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1.5 rounded text-[10px] font-bold uppercase shadow-sm w-full transition"><i class="fas fa-arrow-right mr-1"></i> Autorizar</button>` 
+                        : '';
+                } else if (row.estado_pago === 'Autorizado') {
+                    semaforoHTML = `
+                        <div class="flex items-center justify-center space-x-1 mb-2">
+                            <div class="w-5 h-5 rounded-full bg-gray-300"></div>
+                            <div class="w-5 h-5 rounded-full bg-yellow-400 shadow-lg border-2 border-yellow-600"></div>
+                            <div class="w-5 h-5 rounded-full bg-gray-300"></div>
+                        </div>
+                        <span class="text-xs font-bold text-yellow-600 block text-center"><i class="fas fa-check-circle"></i> Autorizado</span>`;
+                    botonesAdmin = userRole === 'admin' 
+                        ? `<div class="mt-2 grid grid-cols-2 gap-1">
+                            <button onclick="cambiarEstado(${row.id}, 'anterior')" class="bg-red-500 hover:bg-red-600 text-white px-1 py-1 rounded text-[9px] font-bold shadow-sm transition"><i class="fas fa-arrow-left"></i> Revocar</button>
+                            <button onclick="cambiarEstado(${row.id}, 'siguiente')" class="bg-green-500 hover:bg-green-600 text-white px-1 py-1 rounded text-[9px] font-bold shadow-sm transition"><i class="fas fa-arrow-right"></i> Pagar</button>
+                           </div>` 
+                        : '';
+                } else if (row.estado_pago === 'Pagado') {
+                    semaforoHTML = `
+                        <div class="flex items-center justify-center space-x-1 mb-2">
+                            <div class="w-5 h-5 rounded-full bg-gray-300"></div>
+                            <div class="w-5 h-5 rounded-full bg-gray-300"></div>
+                            <div class="w-5 h-5 rounded-full bg-green-500 shadow-lg border-2 border-green-700"></div>
+                        </div>
+                        <span class="text-xs font-bold text-green-700 block text-center"><i class="fas fa-check-double"></i> Pagado</span>`;
+                    botonesAdmin = userRole === 'admin' 
+                        ? `<button onclick="cambiarEstado(${row.id}, 'anterior')" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1.5 rounded text-[10px] font-bold uppercase shadow-sm w-full transition"><i class="fas fa-arrow-left mr-1"></i> Revertir</button>` 
+                        : '';
+                }
+                
+                let badgeEstado = semaforoHTML;
+                let btnPagoAdmin = botonesAdmin;
+
+                tbody.innerHTML += `
+                    <tr class="border-b border-gray-200 hover:bg-gray-50 transition">
+                        <td class="p-3 text-center align-middle">
+                            <span class="text-gray-400 font-bold text-xs">#${row.id}</span><br>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold ${colorOrigen} border mt-1 inline-block">${row.tipo}</span>
+                        </td>
+                        <td class="p-3">
+                            <div class="font-bold text-base leading-tight text-black truncate max-w-xs" title="${row.nombre}">${row.nombre}</div>
+                            <div class="font-mono text-xs text-gray-500 mt-1" title="RFC"><i class="fas fa-building w-4"></i> ${row.remitente_rfc}</div>
+                            <div class="font-mono text-[10px] text-blue-600 mt-0.5 font-bold truncate max-w-xs" title="UUID/Folio"><i class="fas fa-hashtag w-4"></i> ${row.uuid_folio}</div>
+                            ${row.moneda && row.moneda !== 'MXN' ? `<div class="text-[10px] text-purple-600 font-bold mt-0.5"><i class="fas fa-coins w-4"></i> ${row.moneda}</div>` : ''}
+                            ${row.uso_cfdi ? `<div class="text-[9px] text-gray-400 mt-0.5 truncate max-w-xs" title="Uso CFDI: ${row.uso_cfdi}">Uso: ${row.uso_cfdi}</div>` : ''}
+                            ${row.forma_pago ? `<div class="text-[9px] text-gray-400 truncate max-w-xs" title="Forma Pago: ${row.forma_pago}">F.Pago: ${row.forma_pago}</div>` : ''}
+                            ${row.metodo_pago ? `<div class="text-[9px] text-gray-400 truncate max-w-xs" title="Método Pago: ${row.metodo_pago}">M.Pago: ${row.metodo_pago}</div>` : ''}
+                            ${row.clave_sat ? `<div class="text-[9px] text-gray-400 truncate max-w-xs" title="Clave SAT: ${row.clave_sat}">SAT: ${row.clave_sat}</div>` : ''}
+                            ${row.descripcion_concepto ? `<div class="text-[9px] text-blue-500 font-semibold mt-0.5 truncate max-w-xs" title="Descripción: ${row.descripcion_concepto}">Desc: ${row.descripcion_concepto}</div>` : ''}
+                        </td>
+                        <td class="p-3 font-black text-lg text-black text-right align-middle">
+                            $${row.total.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                        </td>
+                        <td class="p-3 text-xs text-gray-700 align-middle">
+                            <div class="font-bold text-sm"><i class="fas fa-map-marker-alt text-gray-400 w-4"></i> ${row.centro_costo}</div>
+                            <div class="mt-1"><i class="far fa-calendar-alt text-gray-400 w-4"></i> ${row.fecha_pago}</div>
+                            <div class="text-[10px] text-gray-400 mt-1 uppercase font-bold"><i class="fas fa-user w-4"></i> ${row.subido_por}</div>
+                            ${row.fecha_registro ? `<div class="text-[9px] text-gray-400 mt-0.5"><i class="fas fa-clock w-4"></i> Cargado: ${new Date(row.fecha_registro).toLocaleDateString('es-MX')}</div>` : ''}
+                        </td>
+                        <td class="p-3 align-middle">
+                            ${badgeEstado}
+                            ${btnPagoAdmin}
+                        </td>
+                        <td class="p-3 align-middle">${facBadge}${compBadge}</td>
+                        <td class="p-3 text-center align-middle">
+                            <button onclick="openEdit(${row.id})" class="text-gray-400 hover:text-black text-lg mr-3 transition" title="Editar"><i class="fas fa-edit"></i></button>
+                            <button onclick="deleteDoc(${row.id})" class="text-gray-400 hover:text-red-600 text-lg transition" title="Eliminar"><i class="fas fa-trash-alt"></i></button>
+                        </td>
+                    </tr>`;
+            });
+
+            document.getElementById("suma-total").innerText = "$" + sumaFinal.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        }
+
+        async function deleteDoc(id) {
+            if(confirm("¿Seguro que deseas eliminar este registro para siempre?")) {
+                await fetch(`/api/documentos/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${authToken}` } });
+                fetchData();
+            }
+        }
+
+        async function downloadExcel() {
+            const res = await fetch('/api/descargar-excel', { headers: { 'Authorization': `Bearer ${authToken}` } });
+            if (res.ok) {
+                const a = document.createElement('a'); a.href = window.URL.createObjectURL(await res.blob());
+                a.download = "DataHub_Ulma_Reporte.xlsx"; a.click();
+            }
+        }
+    </script>
+</body>
+</html>
