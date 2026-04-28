@@ -138,9 +138,10 @@
                                     <th class="p-3 border-b border-gray-300">Datos Entidad</th>
                                     <th class="p-3 border-b border-gray-300 text-right">Importe Total</th>
                                     <th class="p-3 border-b border-gray-300">Logística</th>
-                                    <th class="p-3 border-b border-gray-300 text-center w-32">Estado</th>
-                                    <th class="p-3 border-b border-gray-300 text-center w-32">Documentos</th>
-                                    <th class="p-3 border-b border-gray-300 text-center w-24">Config</th>
+                                     <th class="p-3 border-b border-gray-300 text-center w-32">Estado</th>
+                                     <th class="p-3 border-b border-gray-300 text-center w-32">Documentos</th>
+                                     <th class="p-3 border-b border-gray-300 text-center w-24">Historial</th>
+                                     <th class="p-3 border-b border-gray-300 text-center w-24">Config</th>
                                 </tr>
                             </thead>
                             <tbody id="data-table" class="text-gray-700 font-medium text-sm"></tbody>
@@ -185,6 +186,33 @@
             <div class="flex justify-end mt-6 space-x-3">
                 <button onclick="document.getElementById('edit-modal').classList.add('hidden')" class="px-4 py-2 bg-gray-200 font-bold rounded text-sm">Cancelar</button>
                 <button onclick="saveEdit()" class="px-4 py-2 bg-black text-white font-bold rounded text-sm">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Historial -->
+    <div id="historial-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg shadow-2xl w-[520px] border-t-8 border-black max-h-[85vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="font-black text-xl uppercase"><i class="fas fa-history mr-2 text-gray-500"></i> Historial del Registro</h2>
+                <button onclick="document.getElementById('historial-modal').classList.add('hidden')" class="text-gray-400 hover:text-black text-2xl leading-none">&times;</button>
+            </div>
+            <div id="historial-content" class="space-y-3"></div>
+            <div class="flex justify-end mt-5">
+                <button onclick="document.getElementById('historial-modal').classList.add('hidden')" class="px-4 py-2 bg-gray-200 font-bold rounded text-sm">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Motivo de Rechazo / Revocación -->
+    <div id="motivo-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg shadow-2xl w-[460px] border-t-8 border-red-600">
+            <h2 class="font-black text-xl mb-1 uppercase text-red-700"><i class="fas fa-exclamation-triangle mr-2"></i> <span id="motivo-titulo">Motivo de Rechazo</span></h2>
+            <p class="text-sm text-gray-500 mb-4">Este motivo será visible para el usuario en su historial del registro.</p>
+            <textarea id="motivo-texto" rows="4" placeholder="Escribe el motivo aquí..." class="w-full border-2 border-gray-300 focus:border-red-500 p-3 rounded text-sm focus:outline-none resize-none"></textarea>
+            <div class="flex justify-end mt-4 space-x-3">
+                <button onclick="document.getElementById('motivo-modal').classList.add('hidden')" class="px-4 py-2 bg-gray-200 font-bold rounded text-sm">Cancelar</button>
+                <button id="motivo-confirmar-btn" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded text-sm transition">Confirmar</button>
             </div>
         </div>
     </div>
@@ -618,10 +646,96 @@
             input.click();
         }
 
+        // ========== HISTORIAL ==========
+        function openHistorial(id) {
+            const registro = globalData.find(r => r.id === id);
+            if (!registro) return;
+
+            let historial = [];
+            try { historial = JSON.parse(registro.historial || "[]"); } catch(e) { historial = []; }
+
+            const iconos = {
+                "Cargado con éxito":        { icon: "fa-check-circle",      color: "text-green-600",  bg: "bg-green-50 border-green-200" },
+                "En proceso de autorización":{ icon: "fa-hourglass-half",    color: "text-blue-600",   bg: "bg-blue-50 border-blue-200" },
+                "Rechazado":                 { icon: "fa-times-circle",      color: "text-red-600",    bg: "bg-red-50 border-red-200" },
+                "Pagado":                    { icon: "fa-check-double",      color: "text-green-700",  bg: "bg-green-100 border-green-300" },
+                "Autorización revocada":     { icon: "fa-undo",              color: "text-orange-600", bg: "bg-orange-50 border-orange-200" },
+                "Pago revertido":            { icon: "fa-undo",              color: "text-orange-600", bg: "bg-orange-50 border-orange-200" },
+            };
+
+            const content = document.getElementById('historial-content');
+            if (historial.length === 0) {
+                content.innerHTML = `<p class="text-gray-400 text-sm text-center py-4"><i class="fas fa-inbox mr-2"></i>Sin eventos registrados.</p>`;
+            } else {
+                content.innerHTML = historial.map(ev => {
+                    const cfg = iconos[ev.evento] || { icon: "fa-info-circle", color: "text-gray-500", bg: "bg-gray-50 border-gray-200" };
+                    return `
+                    <div class="flex items-start gap-3 p-3 rounded-lg border ${cfg.bg}">
+                        <i class="fas ${cfg.icon} ${cfg.color} text-xl mt-0.5 flex-shrink-0"></i>
+                        <div class="flex-1 min-w-0">
+                            <div class="font-bold text-sm ${cfg.color}">${ev.evento}</div>
+                            <div class="text-xs text-gray-500 mt-0.5">
+                                <i class="fas fa-user mr-1"></i>${ev.usuario} &nbsp;·&nbsp; <i class="fas fa-clock mr-1"></i>${ev.fecha} UTC
+                            </div>
+                            ${ev.motivo ? `<div class="mt-1.5 text-xs bg-white border border-gray-200 rounded p-2 text-gray-700"><i class="fas fa-comment-alt mr-1 text-gray-400"></i><span class="font-semibold">Motivo:</span> ${ev.motivo}</div>` : ''}
+                        </div>
+                    </div>`;
+                }).join('');
+            }
+            document.getElementById('historial-modal').classList.remove('hidden');
+        }
+
+        // ========== MODAL MOTIVO ==========
+        function pedirMotivo(titulo, callback) {
+            document.getElementById('motivo-titulo').textContent = titulo;
+            document.getElementById('motivo-texto').value = '';
+            document.getElementById('motivo-modal').classList.remove('hidden');
+            document.getElementById('motivo-texto').focus();
+
+            const btn = document.getElementById('motivo-confirmar-btn');
+            // Clonar para eliminar listeners anteriores
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newBtn, btn);
+            newBtn.onclick = () => {
+                const motivo = document.getElementById('motivo-texto').value.trim();
+                if (!motivo) { alert('⚠️ Debes escribir un motivo.'); return; }
+                document.getElementById('motivo-modal').classList.add('hidden');
+                callback(motivo);
+            };
+        }
+
         async function cambiarEstado(id, direccion) {
-            const endpoint = direccion === 'siguiente' ? `/api/avanzar-estado/${id}` : `/api/retroceder-estado/${id}`;
-            await fetch(endpoint, { method: 'PUT', headers: { 'Authorization': `Bearer ${authToken}` } });
-            fetchData();
+            if (direccion === 'siguiente') {
+                await fetch(`/api/avanzar-estado/${id}`, { method: 'PUT', headers: { 'Authorization': `Bearer ${authToken}` } });
+                fetchData();
+            } else {
+                // Revocar/Revertir requiere motivo
+                const registro = globalData.find(r => r.id === id);
+                const titulo = registro && registro.estado_pago === 'Pagado' ? 'Motivo de Reversión' : 'Motivo de Revocación';
+                pedirMotivo(titulo, async (motivo) => {
+                    await fetch(`/api/retroceder-estado/${id}`, {
+                        method: 'PUT',
+                        headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ motivo })
+                    });
+                    fetchData();
+                });
+            }
+        }
+
+        async function rechazarRegistro(id) {
+            pedirMotivo('Motivo de Rechazo', async (motivo) => {
+                const res = await fetch(`/api/rechazar-registro/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ motivo })
+                });
+                if (!res.ok) {
+                    const err = await res.json();
+                    alert('Error: ' + (err.detail || 'No se pudo rechazar'));
+                }
+                fetchData();
+            });
         }
 
         async function resetDB() {
@@ -707,9 +821,13 @@
                             <div class="w-5 h-5 rounded-full bg-gray-300"></div>
                         </div>
                         <span class="text-xs font-bold text-red-700 block text-center"><i class="fas fa-clock"></i> Pendiente</span>`;
-                    botonesAdmin = (userRole === 'admin' || userRole === 'supervisor')
-                        ? `<button onclick="cambiarEstado(${row.id}, 'siguiente')" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1.5 rounded text-[10px] font-bold uppercase shadow-sm w-full transition"><i class="fas fa-arrow-right mr-1"></i> Autorizar</button>` 
-                        : '';
+                    if (userRole === 'admin' || userRole === 'supervisor') {
+                        botonesAdmin = `
+                            <button onclick="cambiarEstado(${row.id}, 'siguiente')" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1.5 rounded text-[10px] font-bold uppercase shadow-sm w-full transition"><i class="fas fa-arrow-right mr-1"></i> Autorizar</button>
+                            <button onclick="rechazarRegistro(${row.id})" class="mt-1 bg-red-500 hover:bg-red-600 text-white px-2 py-1.5 rounded text-[10px] font-bold uppercase shadow-sm w-full transition"><i class="fas fa-ban mr-1"></i> Rechazar</button>`;
+                    } else {
+                        botonesAdmin = '';
+                    }
                 } else if (row.estado_pago === 'Autorizado') {
                     semaforoHTML = `
                         <div class="flex items-center justify-center space-x-1 mb-2">
@@ -776,6 +894,11 @@
                             ${btnPagoAdmin}
                         </td>
                         <td class="p-3 align-middle">${facBadge}${compBadge}</td>
+                        <td class="p-3 text-center align-middle">
+                            <button onclick="openHistorial(${row.id})" class="bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-black px-2 py-1.5 rounded text-[10px] font-bold w-full transition shadow-sm" title="Ver historial">
+                                <i class="fas fa-history mr-1"></i> Ver
+                            </button>
+                        </td>
                         <td class="p-3 text-center align-middle">
                             <button onclick="openEdit(${row.id})" class="text-gray-400 hover:text-black text-lg mr-3 transition" title="Editar"><i class="fas fa-edit"></i></button>
                             <button onclick="deleteDoc(${row.id})" class="text-gray-400 hover:text-red-600 text-lg transition" title="Eliminar"><i class="fas fa-trash-alt"></i></button>

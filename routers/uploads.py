@@ -1,5 +1,6 @@
 import io
 import re
+import json
 import xml.etree.ElementTree as ET
 from datetime import datetime
 from typing import List
@@ -14,6 +15,22 @@ from security import get_current_user
 
 # Creamos el router principal para las subidas
 router = APIRouter(prefix="/api", tags=["Subidas"])
+
+def agregar_evento_historial(doc: DBDocument, evento: str, usuario: str, motivo: str = ""):
+    """Agrega un evento al historial del documento."""
+    try:
+        historial = json.loads(doc.historial or "[]")
+    except Exception:
+        historial = []
+    entrada = {
+        "fecha": datetime.utcnow().strftime("%Y-%m-%d %H:%M"),
+        "evento": evento,
+        "usuario": usuario,
+    }
+    if motivo:
+        entrada["motivo"] = motivo
+    historial.append(entrada)
+    doc.historial = json.dumps(historial, ensure_ascii=False)
 
 @router.post("/subir-xml")
 async def procesar_xml(files: List[UploadFile] = File(...), current_user: DBUser = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -62,10 +79,12 @@ async def procesar_xml(files: List[UploadFile] = File(...), current_user: DBUser
                 metodo_pago=metodo_pago,
                 clave_sat=clave_sat,
                 descripcion_sat=descripcion_sat,
-                descripcion_concepto=descripcion_sat,  # Guardar la descripción del concepto
+                descripcion_concepto=descripcion_sat,
                 moneda=moneda_xml
             )
             db.add(nuevo_doc)
+            db.flush()  # Para obtener el id antes del commit
+            agregar_evento_historial(nuevo_doc, "Cargado con éxito", current_user.username)
         db.commit()
         return {"status": "ok"}
     except Exception as e: raise HTTPException(status_code=400, detail=str(e))
@@ -90,6 +109,8 @@ def procesar_texto(texto_correo: str = Form(...), current_user: DBUser = Depends
     moneda = moneda_match.group(1) if moneda_match else "MXN"
     nuevo_doc = DBDocument(tipo="CORREO", remitente_rfc=rfc, nombre=nombre, total=monto, uuid_folio=folio, centro_costo=centro, fecha_pago=fecha, subido_por=current_user.username, moneda=moneda)
     db.add(nuevo_doc)
+    db.flush()
+    agregar_evento_historial(nuevo_doc, "Cargado con éxito", current_user.username)
     db.commit()
     return {"status": "ok"}
 
@@ -110,6 +131,8 @@ async def procesar_excel(file: UploadFile = File(...), current_user: DBUser = De
             else: fecha = str(fecha_val)
             doc = DBDocument(tipo="EXCEL", remitente_rfc=rfc, nombre=nombre, total=total, uuid_folio=folio, centro_costo=centro, fecha_pago=fecha, subido_por=current_user.username, moneda=moneda)
             db.add(doc)
+            db.flush()
+            agregar_evento_historial(doc, "Cargado con éxito", current_user.username)
         db.commit()
         return {"status": "ok"}
     except Exception as e: raise HTTPException(status_code=400, detail=str(e))
@@ -130,5 +153,7 @@ def procesar_manual(datos: dict = Body(...), current_user: DBUser = Depends(get_
         moneda=datos.get("moneda", "MXN")
     )
     db.add(doc)
+    db.flush()
+    agregar_evento_historial(doc, "Cargado con éxito", current_user.username)
     db.commit()
     return {"status": "ok"}

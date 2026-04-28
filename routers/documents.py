@@ -1,6 +1,8 @@
 import os
 import io
+import json
 import pandas as pd
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Body
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
@@ -19,6 +21,22 @@ from permissions import (
 
 # Creamos el router para documentos
 router = APIRouter(prefix="/api", tags=["Documentos y Utilidades"])
+
+def agregar_evento_historial(doc: DBDocument, evento: str, usuario: str, motivo: str = ""):
+    """Agrega un evento al historial del documento."""
+    try:
+        historial = json.loads(doc.historial or "[]")
+    except Exception:
+        historial = []
+    entrada = {
+        "fecha": datetime.utcnow().strftime("%Y-%m-%d %H:%M"),
+        "evento": evento,
+        "usuario": usuario,
+    }
+    if motivo:
+        entrada["motivo"] = motivo
+    historial.append(entrada)
+    doc.historial = json.dumps(historial, ensure_ascii=False)
 
 @router.post("/reset-db")
 def reset_database(current_user: DBUser = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -118,13 +136,15 @@ def avanzar_estado(doc_id: int, current_user: DBUser = Depends(get_current_user)
     
     if doc.estado_pago == "Pendiente":
         doc.estado_pago = "Autorizado"
+        agregar_evento_historial(doc, "En proceso de autorización", current_user.username)
     elif doc.estado_pago == "Autorizado":
         doc.estado_pago = "Pagado"
+        agregar_evento_historial(doc, "Pagado", current_user.username)
     db.commit()
     return {"status": "ok"}
 
 @router.put("/retroceder-estado/{doc_id}")
-def retroceder_estado(doc_id: int, current_user: DBUser = Depends(get_current_user), db: Session = Depends(get_db)):
+def retroceder_estado(doc_id: int, datos: dict = Body(default={}), current_user: DBUser = Depends(get_current_user), db: Session = Depends(get_db)):
     doc = db.query(DBDocument).filter(DBDocument.id == doc_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Documento no encontrado")
@@ -133,15 +153,21 @@ def retroceder_estado(doc_id: int, current_user: DBUser = Depends(get_current_us
     if not puede_autorizar(current_user.username, doc.subido_por, db):
         raise HTTPException(status_code=403, detail="No tienes permisos para revertir el estado de este registro")
     
+    motivo = datos.get("motivo", "").strip()
+    if not motivo:
+        raise HTTPException(status_code=400, detail="Debes indicar el motivo de revocación")
+
     if doc.estado_pago == "Pagado":
         doc.estado_pago = "Autorizado"
+        agregar_evento_historial(doc, "Pago revertido", current_user.username, motivo)
     elif doc.estado_pago == "Autorizado":
         doc.estado_pago = "Pendiente"
+        agregar_evento_historial(doc, "Autorización revocada", current_user.username, motivo)
     db.commit()
     return {"status": "ok"}
 
 @router.put("/rechazar-registro/{doc_id}")
-def rechazar_registro(doc_id: int, current_user: DBUser = Depends(get_current_user), db: Session = Depends(get_db)):
+def rechazar_registro(doc_id: int, datos: dict = Body(...), current_user: DBUser = Depends(get_current_user), db: Session = Depends(get_db)):
     doc = db.query(DBDocument).filter(DBDocument.id == doc_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Documento no encontrado")
@@ -154,7 +180,12 @@ def rechazar_registro(doc_id: int, current_user: DBUser = Depends(get_current_us
     if doc.estado_pago != "Pendiente":
         raise HTTPException(status_code=400, detail="Solo se pueden rechazar registros en estado Pendiente")
     
+    motivo = datos.get("motivo", "").strip()
+    if not motivo:
+        raise HTTPException(status_code=400, detail="Debes indicar el motivo de rechazo")
+
     doc.estado_pago = "Rechazado"
+    agregar_evento_historial(doc, "Rechazado", current_user.username, motivo)
     db.commit()
     return {"status": "ok"}
 
@@ -173,6 +204,7 @@ async def subir_comprobante_pago(doc_id: int, file: UploadFile = File(...), curr
         buffer.write(await file.read())
     doc.comprobante_pago_pdf = file_path
     doc.estado_pago = "Pagado"
+    agregar_evento_historial(doc, "Pagado", current_user.username)
     db.commit()
     return {"status": "ok"}
 
