@@ -655,13 +655,22 @@
             try { historial = JSON.parse(registro.historial || "[]"); } catch(e) { historial = []; }
 
             const iconos = {
-                "Cargado con éxito":        { icon: "fa-check-circle",      color: "text-green-600",  bg: "bg-green-50 border-green-200" },
-                "En proceso de autorización":{ icon: "fa-hourglass-half",    color: "text-blue-600",   bg: "bg-blue-50 border-blue-200" },
-                "Rechazado":                 { icon: "fa-times-circle",      color: "text-red-600",    bg: "bg-red-50 border-red-200" },
-                "Pagado":                    { icon: "fa-check-double",      color: "text-green-700",  bg: "bg-green-100 border-green-300" },
-                "Autorización revocada":     { icon: "fa-undo",              color: "text-orange-600", bg: "bg-orange-50 border-orange-200" },
-                "Pago revertido":            { icon: "fa-undo",              color: "text-orange-600", bg: "bg-orange-50 border-orange-200" },
+                "Cargado con éxito":                { icon: "fa-check-circle",   color: "text-green-600",  bg: "bg-green-50 border-green-200" },
+                "En proceso de autorización":        { icon: "fa-hourglass-half", color: "text-blue-600",   bg: "bg-blue-50 border-blue-200" },
+                "Rechazado":                         { icon: "fa-times-circle",   color: "text-red-600",    bg: "bg-red-50 border-red-200" },
+                "Pagado":                            { icon: "fa-check-double",   color: "text-green-700",  bg: "bg-green-100 border-green-300" },
+                "Autorización revocada":             { icon: "fa-undo",           color: "text-orange-600", bg: "bg-orange-50 border-orange-200" },
+                "Pago revertido":                    { icon: "fa-undo",           color: "text-orange-600", bg: "bg-orange-50 border-orange-200" },
+                "Corregido - Pendiente de revisión": { icon: "fa-tools",          color: "text-purple-600", bg: "bg-purple-50 border-purple-200" },
             };
+
+            // Determinar si el usuario actual es el dueño y el registro está Rechazado
+            const esOwner = registro.subido_por === localStorage.getItem("currentUser") || true; // se valida en backend
+            const estaRechazado = registro.estado_pago === 'Rechazado';
+            // Buscar si hay un rechazo sin corregir
+            const rechazoPendiente = estaRechazado && historial.some(ev => ev.evento === 'Rechazado' && !ev.corregido);
+            // Solo el dueño del registro puede marcar como corregido
+            const puedeCorregir = rechazoPendiente && registro.subido_por === currentUsername();
 
             const content = document.getElementById('historial-content');
             if (historial.length === 0) {
@@ -669,6 +678,9 @@
             } else {
                 content.innerHTML = historial.map(ev => {
                     const cfg = iconos[ev.evento] || { icon: "fa-info-circle", color: "text-gray-500", bg: "bg-gray-50 border-gray-200" };
+                    // Casilla de corregido: solo en eventos Rechazado sin corregir, y solo para el dueño
+                    const mostrarCasilla = ev.evento === 'Rechazado' && !ev.corregido && puedeCorregir;
+                    const yaCorregido = ev.evento === 'Rechazado' && ev.corregido;
                     return `
                     <div class="flex items-start gap-3 p-3 rounded-lg border ${cfg.bg}">
                         <i class="fas ${cfg.icon} ${cfg.color} text-xl mt-0.5 flex-shrink-0"></i>
@@ -678,11 +690,47 @@
                                 <i class="fas fa-user mr-1"></i>${ev.usuario} &nbsp;·&nbsp; <i class="fas fa-clock mr-1"></i>${ev.fecha} UTC
                             </div>
                             ${ev.motivo ? `<div class="mt-1.5 text-xs bg-white border border-gray-200 rounded p-2 text-gray-700"><i class="fas fa-comment-alt mr-1 text-gray-400"></i><span class="font-semibold">Motivo:</span> ${ev.motivo}</div>` : ''}
+                            ${yaCorregido ? `<div class="mt-2 flex items-center gap-2 text-xs text-green-700 bg-green-50 border border-green-200 rounded p-2"><i class="fas fa-check-square text-green-600 mr-1"></i><span class="font-semibold">Corregido</span> por <strong>${ev.corregido_por}</strong> el ${ev.corregido_fecha} UTC</div>` : ''}
+                            ${mostrarCasilla ? `
+                            <div class="mt-2 bg-yellow-50 border border-yellow-300 rounded p-2">
+                                <label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-yellow-800">
+                                    <input type="checkbox" id="check-corregido-${id}" onchange="confirmarCorregido(${id}, this)" class="w-4 h-4 accent-yellow-500">
+                                    <i class="fas fa-tools mr-1"></i> Marcar como corregido y enviar a revisión
+                                </label>
+                                <p class="text-[10px] text-yellow-700 mt-1 ml-6">Al marcar esto, el registro volverá a estado <strong>Pendiente</strong> para que el supervisor lo revise nuevamente.</p>
+                            </div>` : ''}
                         </div>
                     </div>`;
                 }).join('');
             }
             document.getElementById('historial-modal').classList.remove('hidden');
+        }
+
+        function currentUsername() {
+            // Extraer el username del token JWT (payload base64)
+            try {
+                const token = authToken;
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                return payload.sub || '';
+            } catch(e) { return ''; }
+        }
+
+        async function confirmarCorregido(id, checkbox) {
+            if (!checkbox.checked) return;
+            checkbox.disabled = true;
+            const res = await fetch(`/api/marcar-corregido/${id}`, {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+            if (res.ok) {
+                document.getElementById('historial-modal').classList.add('hidden');
+                fetchData();
+            } else {
+                const err = await res.json();
+                alert('Error: ' + (err.detail || 'No se pudo marcar como corregido'));
+                checkbox.checked = false;
+                checkbox.disabled = false;
+            }
         }
 
         // ========== MODAL MOTIVO ==========
@@ -844,6 +892,20 @@
                            </div>`;
                     } else if (userRole === 'supervisor') {
                         botonesAdmin = `<button onclick="cambiarEstado(${row.id}, 'anterior')" class="mt-2 bg-red-500 hover:bg-red-600 text-white px-2 py-1.5 rounded text-[10px] font-bold uppercase shadow-sm w-full transition"><i class="fas fa-arrow-left mr-1"></i> Revocar</button>`;
+                    } else {
+                        botonesAdmin = '';
+                    }
+                } else if (row.estado_pago === 'Rechazado') {
+                    semaforoHTML = `
+                        <div class="flex items-center justify-center space-x-1 mb-2">
+                            <div class="w-5 h-5 rounded-full bg-gray-400 shadow-lg border-2 border-gray-600"></div>
+                            <div class="w-5 h-5 rounded-full bg-gray-400 shadow-lg border-2 border-gray-600"></div>
+                            <div class="w-5 h-5 rounded-full bg-gray-400 shadow-lg border-2 border-gray-600"></div>
+                        </div>
+                        <span class="text-xs font-bold text-gray-600 block text-center"><i class="fas fa-ban"></i> Rechazado</span>`;
+                    if (userRole === 'admin' || userRole === 'supervisor') {
+                        botonesAdmin = `<button onclick="cambiarEstado(${row.id}, 'siguiente')" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1.5 rounded text-[10px] font-bold uppercase shadow-sm w-full transition"><i class="fas fa-arrow-right mr-1"></i> Autorizar</button>
+                            <button onclick="rechazarRegistro(${row.id})" class="mt-1 bg-red-500 hover:bg-red-600 text-white px-2 py-1.5 rounded text-[10px] font-bold uppercase shadow-sm w-full transition"><i class="fas fa-ban mr-1"></i> Rechazar</button>`;
                     } else {
                         botonesAdmin = '';
                     }

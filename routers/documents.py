@@ -189,6 +189,41 @@ def rechazar_registro(doc_id: int, datos: dict = Body(...), current_user: DBUser
     db.commit()
     return {"status": "ok"}
 
+@router.put("/marcar-corregido/{doc_id}")
+def marcar_corregido(doc_id: int, current_user: DBUser = Depends(get_current_user), db: Session = Depends(get_db)):
+    doc = db.query(DBDocument).filter(DBDocument.id == doc_id).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Documento no encontrado")
+    
+    # Solo el dueño del registro puede marcarlo como corregido
+    if doc.subido_por != current_user.username:
+        raise HTTPException(status_code=403, detail="Solo el dueño del registro puede marcarlo como corregido")
+    
+    # Solo se puede corregir si está en estado Rechazado
+    if doc.estado_pago != "Rechazado":
+        raise HTTPException(status_code=400, detail="Solo se pueden corregir registros en estado Rechazado")
+    
+    # Marcar el último evento de rechazo como corregido en el historial
+    import json as _json
+    try:
+        historial = _json.loads(doc.historial or "[]")
+    except Exception:
+        historial = []
+    
+    # Marcar el último evento de "Rechazado" como corregido
+    for ev in reversed(historial):
+        if ev.get("evento") == "Rechazado" and not ev.get("corregido"):
+            ev["corregido"] = True
+            ev["corregido_por"] = current_user.username
+            ev["corregido_fecha"] = datetime.utcnow().strftime("%Y-%m-%d %H:%M")
+            break
+    
+    doc.historial = _json.dumps(historial, ensure_ascii=False)
+    doc.estado_pago = "Pendiente"
+    agregar_evento_historial(doc, "Corregido - Pendiente de revisión", current_user.username)
+    db.commit()
+    return {"status": "ok"}
+
 @router.post("/subir-comprobante-pago/{doc_id}")
 async def subir_comprobante_pago(doc_id: int, file: UploadFile = File(...), current_user: DBUser = Depends(get_current_user), db: Session = Depends(get_db)):
     doc = db.query(DBDocument).filter(DBDocument.id == doc_id).first()
