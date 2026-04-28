@@ -43,10 +43,18 @@ def reset_database(current_user: DBUser = Depends(get_current_user), db: Session
     if current_user.role != "admin": raise HTTPException(status_code=403, detail="No autorizado")
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
-    db.add(DBUser(username="admin", hashed_password=get_password_hash("admin123"), role="admin"))
-    db.add(DBUser(username="usuario", hashed_password=get_password_hash("usuario123"), role="usuario"))
+    # Proveedores
+    db.add(DBUser(username="usuarioA", hashed_password=get_password_hash("pass123"), role="proveedor", subordinados=""))
+    db.add(DBUser(username="usuarioB", hashed_password=get_password_hash("pass123"), role="proveedor", subordinados=""))
+    db.add(DBUser(username="usuarioC", hashed_password=get_password_hash("pass123"), role="proveedor", subordinados=""))
+    db.add(DBUser(username="usuarioD", hashed_password=get_password_hash("pass123"), role="proveedor", subordinados=""))
+    # Supervisores
+    db.add(DBUser(username="usuario1", hashed_password=get_password_hash("super123"), role="supervisor", subordinados="usuarioA,usuarioB"))
+    db.add(DBUser(username="usuario2", hashed_password=get_password_hash("super123"), role="supervisor", subordinados="usuarioC,usuarioD"))
+    # Admin
+    db.add(DBUser(username="admin", hashed_password=get_password_hash("admin123"), role="admin", subordinados="usuario1,usuario2,usuarioA,usuarioB,usuarioC,usuarioD"))
     db.commit()
-    return {"status": "ok"}
+    return {"status": "ok", "mensaje": "BD reiniciada con todos los usuarios del sistema"}
 
 @router.delete("/documentos/{doc_id}")
 def eliminar_doc(doc_id: int, current_user: DBUser = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -260,7 +268,36 @@ def ver_datos(current_user: DBUser = Depends(get_current_user), db: Session = De
         DBDocument.subido_por.in_(usuarios_permitidos)
     ).order_by(DBDocument.id.desc()).all()
     
-    return {"registros": registros, "role": current_user.role}
+    # Serializar explícitamente incluyendo el campo historial
+    registros_serializados = []
+    for r in registros:
+        registros_serializados.append({
+            "id": r.id,
+            "tipo": r.tipo,
+            "remitente_rfc": r.remitente_rfc,
+            "nombre": r.nombre,
+            "uuid_folio": r.uuid_folio,
+            "total": r.total,
+            "fecha_registro": r.fecha_registro.isoformat() if r.fecha_registro else None,
+            "subido_por": r.subido_por,
+            "centro_costo": r.centro_costo,
+            "subcatalogo_centro": r.subcatalogo_centro,
+            "porcentaje_centro": r.porcentaje_centro,
+            "fecha_pago": r.fecha_pago,
+            "comprobante_pdf": r.comprobante_pdf,
+            "estado_pago": r.estado_pago,
+            "comprobante_pago_pdf": r.comprobante_pago_pdf,
+            "uso_cfdi": r.uso_cfdi,
+            "forma_pago": r.forma_pago,
+            "metodo_pago": r.metodo_pago,
+            "clave_sat": r.clave_sat,
+            "descripcion_sat": r.descripcion_sat,
+            "descripcion_concepto": r.descripcion_concepto,
+            "moneda": r.moneda,
+            "historial": r.historial or "[]",
+        })
+    
+    return {"registros": registros_serializados, "role": current_user.role}
 
 @router.get("/descargar-excel")
 def descargar_excel(current_user: DBUser = Depends(get_current_user), db: Session = Depends(get_db)):
