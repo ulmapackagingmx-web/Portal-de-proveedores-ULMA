@@ -43,6 +43,14 @@ def reset_database(current_user: DBUser = Depends(get_current_user), db: Session
     if current_user.role != "admin": raise HTTPException(status_code=403, detail="No autorizado")
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
+    # Migración: agregar columna historial si no existe
+    try:
+        from sqlalchemy import text
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE documents ADD COLUMN historial TEXT DEFAULT '[]'"))
+            conn.commit()
+    except Exception:
+        pass
     # Proveedores
     db.add(DBUser(username="usuarioA", hashed_password=get_password_hash("pass123"), role="proveedor", subordinados=""))
     db.add(DBUser(username="usuarioB", hashed_password=get_password_hash("pass123"), role="proveedor", subordinados=""))
@@ -55,6 +63,34 @@ def reset_database(current_user: DBUser = Depends(get_current_user), db: Session
     db.add(DBUser(username="admin", hashed_password=get_password_hash("admin123"), role="admin", subordinados="usuario1,usuario2,usuarioA,usuarioB,usuarioC,usuarioD"))
     db.commit()
     return {"status": "ok", "mensaje": "BD reiniciada con todos los usuarios del sistema"}
+
+@router.post("/recrear-usuarios")
+def recrear_usuarios(db: Session = Depends(get_db)):
+    """Endpoint público temporal para recrear usuarios sin borrar registros"""
+    # Eliminar usuarios existentes
+    db.query(DBUser).delete()
+    db.commit()
+    # Recrear todos los usuarios
+    db.add(DBUser(username="usuarioA", hashed_password=get_password_hash("pass123"), role="proveedor", subordinados=""))
+    db.add(DBUser(username="usuarioB", hashed_password=get_password_hash("pass123"), role="proveedor", subordinados=""))
+    db.add(DBUser(username="usuarioC", hashed_password=get_password_hash("pass123"), role="proveedor", subordinados=""))
+    db.add(DBUser(username="usuarioD", hashed_password=get_password_hash("pass123"), role="proveedor", subordinados=""))
+    db.add(DBUser(username="usuario1", hashed_password=get_password_hash("super123"), role="supervisor", subordinados="usuarioA,usuarioB"))
+    db.add(DBUser(username="usuario2", hashed_password=get_password_hash("super123"), role="supervisor", subordinados="usuarioC,usuarioD"))
+    db.add(DBUser(username="admin", hashed_password=get_password_hash("admin123"), role="admin", subordinados="usuario1,usuario2,usuarioA,usuarioB,usuarioC,usuarioD"))
+    db.commit()
+    return {
+        "status": "ok",
+        "usuarios": [
+            {"usuario": "admin", "password": "admin123", "rol": "admin"},
+            {"usuario": "usuario1", "password": "super123", "rol": "supervisor"},
+            {"usuario": "usuario2", "password": "super123", "rol": "supervisor"},
+            {"usuario": "usuarioA", "password": "pass123", "rol": "proveedor"},
+            {"usuario": "usuarioB", "password": "pass123", "rol": "proveedor"},
+            {"usuario": "usuarioC", "password": "pass123", "rol": "proveedor"},
+            {"usuario": "usuarioD", "password": "pass123", "rol": "proveedor"},
+        ]
+    }
 
 @router.delete("/documentos/{doc_id}")
 def eliminar_doc(doc_id: int, current_user: DBUser = Depends(get_current_user), db: Session = Depends(get_db)):

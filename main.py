@@ -36,6 +36,16 @@ app.include_router(webhook_router)
 def startup_event():
     db = SessionLocal()
     
+    # Migración: agregar columna historial si no existe (para BDs existentes)
+    try:
+        from sqlalchemy import text
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE documents ADD COLUMN historial TEXT DEFAULT '[]'"))
+            conn.commit()
+        print("✅ Columna 'historial' agregada a la tabla documents")
+    except Exception:
+        pass  # La columna ya existe, ignorar el error
+    
     # Verificar si ya existen usuarios
     usuarios_existentes = db.query(DBUser).count()
     
