@@ -67,6 +67,11 @@ async def procesar_xml(files: List[UploadFile] = File(...), current_user: DBUser
             forma_pago = root.attrib.get('FormaPago', '')
             metodo_pago = root.attrib.get('MetodoPago', '')
             
+            historial_inicial = json.dumps([{
+                "fecha": datetime.utcnow().strftime("%Y-%m-%d %H:%M"),
+                "evento": "Cargado con éxito",
+                "usuario": current_user.username
+            }], ensure_ascii=False)
             nuevo_doc = DBDocument(
                 tipo="XML", 
                 remitente_rfc=rfc_emisor, 
@@ -80,11 +85,10 @@ async def procesar_xml(files: List[UploadFile] = File(...), current_user: DBUser
                 clave_sat=clave_sat,
                 descripcion_sat=descripcion_sat,
                 descripcion_concepto=descripcion_sat,
-                moneda=moneda_xml
+                moneda=moneda_xml,
+                historial=historial_inicial
             )
             db.add(nuevo_doc)
-            db.flush()  # Para obtener el id antes del commit
-            agregar_evento_historial(nuevo_doc, "Cargado con éxito", current_user.username)
         db.commit()
         return {"status": "ok"}
     except Exception as e: raise HTTPException(status_code=400, detail=str(e))
@@ -107,10 +111,9 @@ def procesar_texto(texto_correo: str = Form(...), current_user: DBUser = Depends
     folio = folio_match.group(1) if folio_match else "S/F"
     moneda_match = re.search(r'MONEDA\s+([A-Z]{3})', texto)
     moneda = moneda_match.group(1) if moneda_match else "MXN"
-    nuevo_doc = DBDocument(tipo="CORREO", remitente_rfc=rfc, nombre=nombre, total=monto, uuid_folio=folio, centro_costo=centro, fecha_pago=fecha, subido_por=current_user.username, moneda=moneda)
+    historial_inicial = json.dumps([{"fecha": datetime.utcnow().strftime("%Y-%m-%d %H:%M"), "evento": "Cargado con éxito", "usuario": current_user.username}], ensure_ascii=False)
+    nuevo_doc = DBDocument(tipo="CORREO", remitente_rfc=rfc, nombre=nombre, total=monto, uuid_folio=folio, centro_costo=centro, fecha_pago=fecha, subido_por=current_user.username, moneda=moneda, historial=historial_inicial)
     db.add(nuevo_doc)
-    db.flush()
-    agregar_evento_historial(nuevo_doc, "Cargado con éxito", current_user.username)
     db.commit()
     return {"status": "ok"}
 
@@ -129,16 +132,16 @@ async def procesar_excel(file: UploadFile = File(...), current_user: DBUser = De
             fecha_val = row.get('Fecha Pago', 'POR DEFINIR')
             if isinstance(fecha_val, datetime): fecha = fecha_val.strftime('%Y-%m-%d')
             else: fecha = str(fecha_val)
-            doc = DBDocument(tipo="EXCEL", remitente_rfc=rfc, nombre=nombre, total=total, uuid_folio=folio, centro_costo=centro, fecha_pago=fecha, subido_por=current_user.username, moneda=moneda)
+            historial_inicial = json.dumps([{"fecha": datetime.utcnow().strftime("%Y-%m-%d %H:%M"), "evento": "Cargado con éxito", "usuario": current_user.username}], ensure_ascii=False)
+            doc = DBDocument(tipo="EXCEL", remitente_rfc=rfc, nombre=nombre, total=total, uuid_folio=folio, centro_costo=centro, fecha_pago=fecha, subido_por=current_user.username, moneda=moneda, historial=historial_inicial)
             db.add(doc)
-            db.flush()
-            agregar_evento_historial(doc, "Cargado con éxito", current_user.username)
         db.commit()
         return {"status": "ok"}
     except Exception as e: raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/subir-manual")
 def procesar_manual(datos: dict = Body(...), current_user: DBUser = Depends(get_current_user), db: Session = Depends(get_db)):
+    historial_inicial = json.dumps([{"fecha": datetime.utcnow().strftime("%Y-%m-%d %H:%M"), "evento": "Cargado con éxito", "usuario": current_user.username}], ensure_ascii=False)
     doc = DBDocument(
         tipo="MANUAL", 
         remitente_rfc=datos.get("rfc"), 
@@ -150,10 +153,9 @@ def procesar_manual(datos: dict = Body(...), current_user: DBUser = Depends(get_
         porcentaje_centro=datos.get("porcentaje", "100%"),
         fecha_pago=datos.get("fecha"), 
         subido_por=current_user.username,
-        moneda=datos.get("moneda", "MXN")
+        moneda=datos.get("moneda", "MXN"),
+        historial=historial_inicial
     )
     db.add(doc)
-    db.flush()
-    agregar_evento_historial(doc, "Cargado con éxito", current_user.username)
     db.commit()
     return {"status": "ok"}
