@@ -312,7 +312,11 @@
             if (input.files.length === 0) return alert("Selecciona al menos un archivo XML");
             const fd = new FormData(); 
             for (let i = 0; i < input.files.length; i++) fd.append('files', input.files[i]);
-            await fetch('/api/subir-xml', { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` }, body: fd });
+            const res = await fetch('/api/subir-xml', { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` }, body: fd });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                alert('Error al procesar XML: ' + (err.detail || res.status));
+            }
             input.value = ""; fetchData(); 
         }
 
@@ -707,12 +711,8 @@
         }
 
         function currentUsername() {
-            // Extraer el username del token JWT (payload base64)
-            try {
-                const token = authToken;
-                const payload = JSON.parse(atob(token.split('.')[1]));
-                return payload.sub || '';
-            } catch(e) { return ''; }
+            // El token ES el username directamente (no JWT)
+            return authToken || '';
         }
 
         async function confirmarCorregido(id, checkbox) {
@@ -788,9 +788,14 @@
 
         async function resetDB() {
             if(confirm("¡PELIGRO! ¿Estás seguro de que quieres borrar TODA la base de datos?")) {
-                if(confirm("¿Absolutamente seguro?")) {
-                    await fetch('/api/reset-db', { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` } });
-                    alert("Base de datos reiniciada. Inicia sesión nuevamente.");
+                if(confirm("¿Absolutamente seguro? Se borrarán TODOS los registros y se recrearán los usuarios.")) {
+                    const res = await fetch('/api/reset-db', { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` } });
+                    if (res.ok) {
+                        // Volver a hacer login automáticamente con admin
+                        alert("✅ Base de datos reiniciada.\n\nSe recrearon todos los usuarios.\nInicia sesión nuevamente con tus credenciales.");
+                    } else {
+                        alert("Error al reiniciar la base de datos.");
+                    }
                     logout();
                 }
             }
@@ -798,7 +803,8 @@
 
         async function fetchData() {
             const res = await fetch('/api/ver-datos', { headers: { 'Authorization': `Bearer ${authToken}` } });
-            if (!res.ok) return logout();
+            if (res.status === 401) return logout();
+            if (!res.ok) return; // No cerrar sesión por otros errores
             const data = await res.json();
             globalData = data.registros; 
             applyFilters(); 
