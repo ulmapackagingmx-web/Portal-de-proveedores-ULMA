@@ -312,27 +312,46 @@
             if (input.files.length === 0) return alert("Selecciona al menos un archivo XML");
             const fd = new FormData(); 
             for (let i = 0; i < input.files.length; i++) fd.append('files', input.files[i]);
-            const res = await fetch('/api/subir-xml', { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` }, body: fd });
-            if (!res.ok) {
-                const err = await res.json().catch(() => ({}));
-                alert('Error al procesar XML: ' + (err.detail || res.status));
+            try {
+                const res = await fetch('/api/subir-xml', { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` }, body: fd });
+                if (res.status === 401) {
+                    alert('⚠️ Sesión expirada. Por favor inicia sesión nuevamente.');
+                    logout();
+                    return;
+                }
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    alert('Error al procesar XML: ' + (err.detail || res.status));
+                }
+            } catch(e) {
+                alert('Error de conexión al procesar XML: ' + e.message);
             }
-            input.value = ""; fetchData(); 
+            input.value = "";
+            await fetchData(); 
         }
 
         async function uploadExcel() { 
             const file = document.getElementById('excel-file').files[0];
             if (!file) return alert("Selecciona un archivo");
             const fd = new FormData(); fd.append('file', file);
-            await fetch('/api/subir-excel', { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` }, body: fd });
-            document.getElementById('excel-file').value = ""; fetchData();
+            try {
+                const res = await fetch('/api/subir-excel', { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` }, body: fd });
+                if (res.status === 401) { alert('⚠️ Sesión expirada.'); logout(); return; }
+                if (!res.ok) { const err = await res.json().catch(() => ({})); alert('Error: ' + (err.detail || res.status)); }
+            } catch(e) { alert('Error de conexión: ' + e.message); }
+            document.getElementById('excel-file').value = "";
+            await fetchData();
         }
 
         async function uploadText() {
             const txt = document.getElementById("text-input").value;
             const fd = new FormData(); fd.append("texto_correo", txt);
-            await fetch('/api/subir-texto', { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` }, body: fd });
-            document.getElementById("text-input").value = ""; fetchData();
+            try {
+                const res = await fetch('/api/subir-texto', { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` }, body: fd });
+                if (res.status === 401) { alert('⚠️ Sesión expirada.'); logout(); return; }
+            } catch(e) { alert('Error de conexión: ' + e.message); }
+            document.getElementById("text-input").value = "";
+            await fetchData();
         }
 
         // ========== FUNCIONES PARA CENTROS DE COSTO DINÁMICOS - MANUAL ==========
@@ -802,12 +821,25 @@
         }
 
         async function fetchData() {
-            const res = await fetch('/api/ver-datos', { headers: { 'Authorization': `Bearer ${authToken}` } });
-            if (res.status === 401) return logout();
-            if (!res.ok) return; // No cerrar sesión por otros errores
-            const data = await res.json();
-            globalData = data.registros; 
-            applyFilters(); 
+            try {
+                const res = await fetch('/api/ver-datos', { headers: { 'Authorization': `Bearer ${authToken}` } });
+                if (res.status === 401) {
+                    // Intentar recrear usuarios automáticamente (por si el servidor reinició)
+                    const recrear = await fetch('/api/recrear-usuarios', { method: 'POST' });
+                    if (recrear.ok) {
+                        // Reintentar login con las credenciales guardadas
+                        alert('⚠️ El servidor reinició. Por favor inicia sesión nuevamente.');
+                    }
+                    logout();
+                    return;
+                }
+                if (!res.ok) return;
+                const data = await res.json();
+                globalData = data.registros; 
+                applyFilters();
+            } catch(e) {
+                console.error('Error en fetchData:', e);
+            }
         }
 
         function applyFilters() {
