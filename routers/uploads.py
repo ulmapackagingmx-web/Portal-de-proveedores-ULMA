@@ -1,6 +1,5 @@
 import io
 import re
-import json
 import xml.etree.ElementTree as ET
 from datetime import datetime
 from typing import List
@@ -15,22 +14,6 @@ from security import get_current_user
 
 # Creamos el router principal para las subidas
 router = APIRouter(prefix="/api", tags=["Subidas"])
-
-def agregar_evento_historial(doc: DBDocument, evento: str, usuario: str, motivo: str = ""):
-    """Agrega un evento al historial del documento."""
-    try:
-        historial = json.loads(doc.historial or "[]")
-    except Exception:
-        historial = []
-    entrada = {
-        "fecha": datetime.utcnow().strftime("%Y-%m-%d %H:%M"),
-        "evento": evento,
-        "usuario": usuario,
-    }
-    if motivo:
-        entrada["motivo"] = motivo
-    historial.append(entrada)
-    doc.historial = json.dumps(historial, ensure_ascii=False)
 
 @router.post("/subir-xml")
 async def procesar_xml(files: List[UploadFile] = File(...), current_user: DBUser = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -79,21 +62,11 @@ async def procesar_xml(files: List[UploadFile] = File(...), current_user: DBUser
                 metodo_pago=metodo_pago,
                 clave_sat=clave_sat,
                 descripcion_sat=descripcion_sat,
-                descripcion_concepto=descripcion_sat,
+                descripcion_concepto=descripcion_sat,  # Guardar la descripción del concepto
                 moneda=moneda_xml
             )
             db.add(nuevo_doc)
         db.commit()
-        # Actualizar historial después del commit (compatible con BDs sin columna historial)
-        try:
-            for doc in db.query(DBDocument).filter(
-                DBDocument.subido_por == current_user.username,
-                DBDocument.historial == None
-            ).all():
-                doc.historial = json.dumps([{"fecha": datetime.utcnow().strftime("%Y-%m-%d %H:%M"), "evento": "Cargado con éxito", "usuario": current_user.username}], ensure_ascii=False)
-            db.commit()
-        except Exception:
-            pass
         return {"status": "ok"}
     except Exception as e: raise HTTPException(status_code=400, detail=str(e))
 
@@ -118,11 +91,6 @@ def procesar_texto(texto_correo: str = Form(...), current_user: DBUser = Depends
     nuevo_doc = DBDocument(tipo="CORREO", remitente_rfc=rfc, nombre=nombre, total=monto, uuid_folio=folio, centro_costo=centro, fecha_pago=fecha, subido_por=current_user.username, moneda=moneda)
     db.add(nuevo_doc)
     db.commit()
-    try:
-        nuevo_doc.historial = json.dumps([{"fecha": datetime.utcnow().strftime("%Y-%m-%d %H:%M"), "evento": "Cargado con éxito", "usuario": current_user.username}], ensure_ascii=False)
-        db.commit()
-    except Exception:
-        pass
     return {"status": "ok"}
 
 @router.post("/subir-excel")
@@ -163,9 +131,4 @@ def procesar_manual(datos: dict = Body(...), current_user: DBUser = Depends(get_
     )
     db.add(doc)
     db.commit()
-    try:
-        doc.historial = json.dumps([{"fecha": datetime.utcnow().strftime("%Y-%m-%d %H:%M"), "evento": "Cargado con éxito", "usuario": current_user.username}], ensure_ascii=False)
-        db.commit()
-    except Exception:
-        pass
     return {"status": "ok"}

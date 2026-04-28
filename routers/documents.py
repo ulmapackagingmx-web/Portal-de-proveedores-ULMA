@@ -1,8 +1,6 @@
 import os
 import io
-import json
 import pandas as pd
-from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Body
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
@@ -22,75 +20,15 @@ from permissions import (
 # Creamos el router para documentos
 router = APIRouter(prefix="/api", tags=["Documentos y Utilidades"])
 
-def agregar_evento_historial(doc: DBDocument, evento: str, usuario: str, motivo: str = ""):
-    """Agrega un evento al historial del documento."""
-    try:
-        historial = json.loads(doc.historial or "[]")
-    except Exception:
-        historial = []
-    entrada = {
-        "fecha": datetime.utcnow().strftime("%Y-%m-%d %H:%M"),
-        "evento": evento,
-        "usuario": usuario,
-    }
-    if motivo:
-        entrada["motivo"] = motivo
-    historial.append(entrada)
-    doc.historial = json.dumps(historial, ensure_ascii=False)
-
 @router.post("/reset-db")
 def reset_database(current_user: DBUser = Depends(get_current_user), db: Session = Depends(get_db)):
     if current_user.role != "admin": raise HTTPException(status_code=403, detail="No autorizado")
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
-    # Migración: agregar columna historial si no existe
-    try:
-        from sqlalchemy import text
-        with engine.connect() as conn:
-            conn.execute(text("ALTER TABLE documents ADD COLUMN historial TEXT DEFAULT '[]'"))
-            conn.commit()
-    except Exception:
-        pass
-    # Proveedores
-    db.add(DBUser(username="usuarioA", hashed_password=get_password_hash("pass123"), role="proveedor", subordinados=""))
-    db.add(DBUser(username="usuarioB", hashed_password=get_password_hash("pass123"), role="proveedor", subordinados=""))
-    db.add(DBUser(username="usuarioC", hashed_password=get_password_hash("pass123"), role="proveedor", subordinados=""))
-    db.add(DBUser(username="usuarioD", hashed_password=get_password_hash("pass123"), role="proveedor", subordinados=""))
-    # Supervisores
-    db.add(DBUser(username="usuario1", hashed_password=get_password_hash("super123"), role="supervisor", subordinados="usuarioA,usuarioB"))
-    db.add(DBUser(username="usuario2", hashed_password=get_password_hash("super123"), role="supervisor", subordinados="usuarioC,usuarioD"))
-    # Admin
-    db.add(DBUser(username="admin", hashed_password=get_password_hash("admin123"), role="admin", subordinados="usuario1,usuario2,usuarioA,usuarioB,usuarioC,usuarioD"))
+    db.add(DBUser(username="admin", hashed_password=get_password_hash("admin123"), role="admin"))
+    db.add(DBUser(username="usuario", hashed_password=get_password_hash("usuario123"), role="usuario"))
     db.commit()
-    return {"status": "ok", "mensaje": "BD reiniciada con todos los usuarios del sistema"}
-
-@router.post("/recrear-usuarios")
-def recrear_usuarios(db: Session = Depends(get_db)):
-    """Endpoint público temporal para recrear usuarios sin borrar registros"""
-    # Eliminar usuarios existentes
-    db.query(DBUser).delete()
-    db.commit()
-    # Recrear todos los usuarios
-    db.add(DBUser(username="usuarioA", hashed_password=get_password_hash("pass123"), role="proveedor", subordinados=""))
-    db.add(DBUser(username="usuarioB", hashed_password=get_password_hash("pass123"), role="proveedor", subordinados=""))
-    db.add(DBUser(username="usuarioC", hashed_password=get_password_hash("pass123"), role="proveedor", subordinados=""))
-    db.add(DBUser(username="usuarioD", hashed_password=get_password_hash("pass123"), role="proveedor", subordinados=""))
-    db.add(DBUser(username="usuario1", hashed_password=get_password_hash("super123"), role="supervisor", subordinados="usuarioA,usuarioB"))
-    db.add(DBUser(username="usuario2", hashed_password=get_password_hash("super123"), role="supervisor", subordinados="usuarioC,usuarioD"))
-    db.add(DBUser(username="admin", hashed_password=get_password_hash("admin123"), role="admin", subordinados="usuario1,usuario2,usuarioA,usuarioB,usuarioC,usuarioD"))
-    db.commit()
-    return {
-        "status": "ok",
-        "usuarios": [
-            {"usuario": "admin", "password": "admin123", "rol": "admin"},
-            {"usuario": "usuario1", "password": "super123", "rol": "supervisor"},
-            {"usuario": "usuario2", "password": "super123", "rol": "supervisor"},
-            {"usuario": "usuarioA", "password": "pass123", "rol": "proveedor"},
-            {"usuario": "usuarioB", "password": "pass123", "rol": "proveedor"},
-            {"usuario": "usuarioC", "password": "pass123", "rol": "proveedor"},
-            {"usuario": "usuarioD", "password": "pass123", "rol": "proveedor"},
-        ]
-    }
+    return {"status": "ok"}
 
 @router.delete("/documentos/{doc_id}")
 def eliminar_doc(doc_id: int, current_user: DBUser = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -180,15 +118,13 @@ def avanzar_estado(doc_id: int, current_user: DBUser = Depends(get_current_user)
     
     if doc.estado_pago == "Pendiente":
         doc.estado_pago = "Autorizado"
-        agregar_evento_historial(doc, "En proceso de autorización", current_user.username)
     elif doc.estado_pago == "Autorizado":
         doc.estado_pago = "Pagado"
-        agregar_evento_historial(doc, "Pagado", current_user.username)
     db.commit()
     return {"status": "ok"}
 
 @router.put("/retroceder-estado/{doc_id}")
-def retroceder_estado(doc_id: int, datos: dict = Body(default={}), current_user: DBUser = Depends(get_current_user), db: Session = Depends(get_db)):
+def retroceder_estado(doc_id: int, current_user: DBUser = Depends(get_current_user), db: Session = Depends(get_db)):
     doc = db.query(DBDocument).filter(DBDocument.id == doc_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Documento no encontrado")
@@ -197,21 +133,15 @@ def retroceder_estado(doc_id: int, datos: dict = Body(default={}), current_user:
     if not puede_autorizar(current_user.username, doc.subido_por, db):
         raise HTTPException(status_code=403, detail="No tienes permisos para revertir el estado de este registro")
     
-    motivo = datos.get("motivo", "").strip()
-    if not motivo:
-        raise HTTPException(status_code=400, detail="Debes indicar el motivo de revocación")
-
     if doc.estado_pago == "Pagado":
         doc.estado_pago = "Autorizado"
-        agregar_evento_historial(doc, "Pago revertido", current_user.username, motivo)
     elif doc.estado_pago == "Autorizado":
         doc.estado_pago = "Pendiente"
-        agregar_evento_historial(doc, "Autorización revocada", current_user.username, motivo)
     db.commit()
     return {"status": "ok"}
 
 @router.put("/rechazar-registro/{doc_id}")
-def rechazar_registro(doc_id: int, datos: dict = Body(...), current_user: DBUser = Depends(get_current_user), db: Session = Depends(get_db)):
+def rechazar_registro(doc_id: int, current_user: DBUser = Depends(get_current_user), db: Session = Depends(get_db)):
     doc = db.query(DBDocument).filter(DBDocument.id == doc_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Documento no encontrado")
@@ -224,47 +154,7 @@ def rechazar_registro(doc_id: int, datos: dict = Body(...), current_user: DBUser
     if doc.estado_pago != "Pendiente":
         raise HTTPException(status_code=400, detail="Solo se pueden rechazar registros en estado Pendiente")
     
-    motivo = datos.get("motivo", "").strip()
-    if not motivo:
-        raise HTTPException(status_code=400, detail="Debes indicar el motivo de rechazo")
-
     doc.estado_pago = "Rechazado"
-    agregar_evento_historial(doc, "Rechazado", current_user.username, motivo)
-    db.commit()
-    return {"status": "ok"}
-
-@router.put("/marcar-corregido/{doc_id}")
-def marcar_corregido(doc_id: int, current_user: DBUser = Depends(get_current_user), db: Session = Depends(get_db)):
-    doc = db.query(DBDocument).filter(DBDocument.id == doc_id).first()
-    if not doc:
-        raise HTTPException(status_code=404, detail="Documento no encontrado")
-    
-    # Solo el dueño del registro puede marcarlo como corregido
-    if doc.subido_por != current_user.username:
-        raise HTTPException(status_code=403, detail="Solo el dueño del registro puede marcarlo como corregido")
-    
-    # Solo se puede corregir si está en estado Rechazado
-    if doc.estado_pago != "Rechazado":
-        raise HTTPException(status_code=400, detail="Solo se pueden corregir registros en estado Rechazado")
-    
-    # Marcar el último evento de rechazo como corregido en el historial
-    import json as _json
-    try:
-        historial = _json.loads(doc.historial or "[]")
-    except Exception:
-        historial = []
-    
-    # Marcar el último evento de "Rechazado" como corregido
-    for ev in reversed(historial):
-        if ev.get("evento") == "Rechazado" and not ev.get("corregido"):
-            ev["corregido"] = True
-            ev["corregido_por"] = current_user.username
-            ev["corregido_fecha"] = datetime.utcnow().strftime("%Y-%m-%d %H:%M")
-            break
-    
-    doc.historial = _json.dumps(historial, ensure_ascii=False)
-    doc.estado_pago = "Pendiente"
-    agregar_evento_historial(doc, "Corregido - Pendiente de revisión", current_user.username)
     db.commit()
     return {"status": "ok"}
 
@@ -283,7 +173,6 @@ async def subir_comprobante_pago(doc_id: int, file: UploadFile = File(...), curr
         buffer.write(await file.read())
     doc.comprobante_pago_pdf = file_path
     doc.estado_pago = "Pagado"
-    agregar_evento_historial(doc, "Pagado", current_user.username)
     db.commit()
     return {"status": "ok"}
 
@@ -304,36 +193,7 @@ def ver_datos(current_user: DBUser = Depends(get_current_user), db: Session = De
         DBDocument.subido_por.in_(usuarios_permitidos)
     ).order_by(DBDocument.id.desc()).all()
     
-    # Serializar explícitamente incluyendo el campo historial
-    registros_serializados = []
-    for r in registros:
-        registros_serializados.append({
-            "id": r.id,
-            "tipo": r.tipo,
-            "remitente_rfc": r.remitente_rfc,
-            "nombre": r.nombre,
-            "uuid_folio": r.uuid_folio,
-            "total": r.total,
-            "fecha_registro": r.fecha_registro.isoformat() if r.fecha_registro else None,
-            "subido_por": r.subido_por,
-            "centro_costo": r.centro_costo,
-            "subcatalogo_centro": r.subcatalogo_centro,
-            "porcentaje_centro": r.porcentaje_centro,
-            "fecha_pago": r.fecha_pago,
-            "comprobante_pdf": r.comprobante_pdf,
-            "estado_pago": r.estado_pago,
-            "comprobante_pago_pdf": r.comprobante_pago_pdf,
-            "uso_cfdi": r.uso_cfdi,
-            "forma_pago": r.forma_pago,
-            "metodo_pago": r.metodo_pago,
-            "clave_sat": r.clave_sat,
-            "descripcion_sat": r.descripcion_sat,
-            "descripcion_concepto": r.descripcion_concepto,
-            "moneda": r.moneda,
-            "historial": r.historial or "[]",
-        })
-    
-    return {"registros": registros_serializados, "role": current_user.role}
+    return {"registros": registros, "role": current_user.role}
 
 @router.get("/descargar-excel")
 def descargar_excel(current_user: DBUser = Depends(get_current_user), db: Session = Depends(get_db)):

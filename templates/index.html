@@ -138,10 +138,9 @@
                                     <th class="p-3 border-b border-gray-300">Datos Entidad</th>
                                     <th class="p-3 border-b border-gray-300 text-right">Importe Total</th>
                                     <th class="p-3 border-b border-gray-300">Logística</th>
-                                     <th class="p-3 border-b border-gray-300 text-center w-32">Estado</th>
-                                     <th class="p-3 border-b border-gray-300 text-center w-32">Documentos</th>
-                                     <th class="p-3 border-b border-gray-300 text-center w-24">Historial</th>
-                                     <th class="p-3 border-b border-gray-300 text-center w-24">Config</th>
+                                    <th class="p-3 border-b border-gray-300 text-center w-32">Estado</th>
+                                    <th class="p-3 border-b border-gray-300 text-center w-32">Documentos</th>
+                                    <th class="p-3 border-b border-gray-300 text-center w-24">Config</th>
                                 </tr>
                             </thead>
                             <tbody id="data-table" class="text-gray-700 font-medium text-sm"></tbody>
@@ -190,33 +189,6 @@
         </div>
     </div>
 
-    <!-- Modal Historial -->
-    <div id="historial-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-        <div class="bg-white p-6 rounded-lg shadow-2xl w-[520px] border-t-8 border-black max-h-[85vh] overflow-y-auto">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="font-black text-xl uppercase"><i class="fas fa-history mr-2 text-gray-500"></i> Historial del Registro</h2>
-                <button onclick="document.getElementById('historial-modal').classList.add('hidden')" class="text-gray-400 hover:text-black text-2xl leading-none">&times;</button>
-            </div>
-            <div id="historial-content" class="space-y-3"></div>
-            <div class="flex justify-end mt-5">
-                <button onclick="document.getElementById('historial-modal').classList.add('hidden')" class="px-4 py-2 bg-gray-200 font-bold rounded text-sm">Cerrar</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal Motivo de Rechazo / Revocación -->
-    <div id="motivo-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-        <div class="bg-white p-6 rounded-lg shadow-2xl w-[460px] border-t-8 border-red-600">
-            <h2 class="font-black text-xl mb-1 uppercase text-red-700"><i class="fas fa-exclamation-triangle mr-2"></i> <span id="motivo-titulo">Motivo de Rechazo</span></h2>
-            <p class="text-sm text-gray-500 mb-4">Este motivo será visible para el usuario en su historial del registro.</p>
-            <textarea id="motivo-texto" rows="4" placeholder="Escribe el motivo aquí..." class="w-full border-2 border-gray-300 focus:border-red-500 p-3 rounded text-sm focus:outline-none resize-none"></textarea>
-            <div class="flex justify-end mt-4 space-x-3">
-                <button onclick="document.getElementById('motivo-modal').classList.add('hidden')" class="px-4 py-2 bg-gray-200 font-bold rounded text-sm">Cancelar</button>
-                <button id="motivo-confirmar-btn" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded text-sm transition">Confirmar</button>
-            </div>
-        </div>
-    </div>
-
     <!-- Modal Registro Manual -->
     <div id="manual-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
         <div class="bg-white p-6 rounded-lg shadow-2xl w-[500px] border-t-8 border-black max-h-[90vh] overflow-y-auto">
@@ -261,8 +233,8 @@
 
         // Subcatálogos por centro de costo
         const subcatalogos = {
-            'Administración': ['SERVICIOS ADMINISTRATIVOS', 'CAPACITACION', 'SERVICIOS INFORMÁTICOS'],
-            'Comercial': ['SERVICIOS Y FERIAS', 'PAPELERIA'],
+            'Administración': ['SERVICIOS ADMINISTRATIVOS', 'CAPACITACION'],
+            'Comercial': ['SERVICIOS Y FERIAS'],
             'Servicio': ['IMPORTACION Y MÁQUINAS']
         };
 
@@ -312,46 +284,23 @@
             if (input.files.length === 0) return alert("Selecciona al menos un archivo XML");
             const fd = new FormData(); 
             for (let i = 0; i < input.files.length; i++) fd.append('files', input.files[i]);
-            try {
-                const res = await fetch('/api/subir-xml', { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` }, body: fd });
-                if (res.status === 401) {
-                    alert('⚠️ Sesión expirada. Por favor inicia sesión nuevamente.');
-                    logout();
-                    return;
-                }
-                if (!res.ok) {
-                    const err = await res.json().catch(() => ({}));
-                    alert('Error al procesar XML: ' + (err.detail || res.status));
-                }
-            } catch(e) {
-                alert('Error de conexión al procesar XML: ' + e.message);
-            }
-            input.value = "";
-            await fetchData(); 
+            await fetch('/api/subir-xml', { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` }, body: fd });
+            input.value = ""; fetchData(); 
         }
 
         async function uploadExcel() { 
             const file = document.getElementById('excel-file').files[0];
             if (!file) return alert("Selecciona un archivo");
             const fd = new FormData(); fd.append('file', file);
-            try {
-                const res = await fetch('/api/subir-excel', { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` }, body: fd });
-                if (res.status === 401) { alert('⚠️ Sesión expirada.'); logout(); return; }
-                if (!res.ok) { const err = await res.json().catch(() => ({})); alert('Error: ' + (err.detail || res.status)); }
-            } catch(e) { alert('Error de conexión: ' + e.message); }
-            document.getElementById('excel-file').value = "";
-            await fetchData();
+            await fetch('/api/subir-excel', { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` }, body: fd });
+            document.getElementById('excel-file').value = ""; fetchData();
         }
 
         async function uploadText() {
             const txt = document.getElementById("text-input").value;
             const fd = new FormData(); fd.append("texto_correo", txt);
-            try {
-                const res = await fetch('/api/subir-texto', { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` }, body: fd });
-                if (res.status === 401) { alert('⚠️ Sesión expirada.'); logout(); return; }
-            } catch(e) { alert('Error de conexión: ' + e.message); }
-            document.getElementById("text-input").value = "";
-            await fetchData();
+            await fetch('/api/subir-texto', { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` }, body: fd });
+            document.getElementById("text-input").value = ""; fetchData();
         }
 
         // ========== FUNCIONES PARA CENTROS DE COSTO DINÁMICOS - MANUAL ==========
@@ -669,177 +618,28 @@
             input.click();
         }
 
-        // ========== HISTORIAL ==========
-        function openHistorial(id) {
-            const registro = globalData.find(r => r.id === id);
-            if (!registro) return;
-
-            let historial = [];
-            try { historial = JSON.parse(registro.historial || "[]"); } catch(e) { historial = []; }
-
-            const iconos = {
-                "Cargado con éxito":                { icon: "fa-check-circle",   color: "text-green-600",  bg: "bg-green-50 border-green-200" },
-                "En proceso de autorización":        { icon: "fa-hourglass-half", color: "text-blue-600",   bg: "bg-blue-50 border-blue-200" },
-                "Rechazado":                         { icon: "fa-times-circle",   color: "text-red-600",    bg: "bg-red-50 border-red-200" },
-                "Pagado":                            { icon: "fa-check-double",   color: "text-green-700",  bg: "bg-green-100 border-green-300" },
-                "Autorización revocada":             { icon: "fa-undo",           color: "text-orange-600", bg: "bg-orange-50 border-orange-200" },
-                "Pago revertido":                    { icon: "fa-undo",           color: "text-orange-600", bg: "bg-orange-50 border-orange-200" },
-                "Corregido - Pendiente de revisión": { icon: "fa-tools",          color: "text-purple-600", bg: "bg-purple-50 border-purple-200" },
-            };
-
-            // Determinar si el usuario actual es el dueño y el registro está Rechazado
-            const esOwner = registro.subido_por === localStorage.getItem("currentUser") || true; // se valida en backend
-            const estaRechazado = registro.estado_pago === 'Rechazado';
-            // Buscar si hay un rechazo sin corregir
-            const rechazoPendiente = estaRechazado && historial.some(ev => ev.evento === 'Rechazado' && !ev.corregido);
-            // Solo el dueño del registro puede marcar como corregido
-            const puedeCorregir = rechazoPendiente && registro.subido_por === currentUsername();
-
-            const content = document.getElementById('historial-content');
-            if (historial.length === 0) {
-                content.innerHTML = `<p class="text-gray-400 text-sm text-center py-4"><i class="fas fa-inbox mr-2"></i>Sin eventos registrados.</p>`;
-            } else {
-                content.innerHTML = historial.map(ev => {
-                    const cfg = iconos[ev.evento] || { icon: "fa-info-circle", color: "text-gray-500", bg: "bg-gray-50 border-gray-200" };
-                    // Casilla de corregido: solo en eventos Rechazado sin corregir, y solo para el dueño
-                    const mostrarCasilla = ev.evento === 'Rechazado' && !ev.corregido && puedeCorregir;
-                    const yaCorregido = ev.evento === 'Rechazado' && ev.corregido;
-                    return `
-                    <div class="flex items-start gap-3 p-3 rounded-lg border ${cfg.bg}">
-                        <i class="fas ${cfg.icon} ${cfg.color} text-xl mt-0.5 flex-shrink-0"></i>
-                        <div class="flex-1 min-w-0">
-                            <div class="font-bold text-sm ${cfg.color}">${ev.evento}</div>
-                            <div class="text-xs text-gray-500 mt-0.5">
-                                <i class="fas fa-user mr-1"></i>${ev.usuario} &nbsp;·&nbsp; <i class="fas fa-clock mr-1"></i>${ev.fecha} UTC
-                            </div>
-                            ${ev.motivo ? `<div class="mt-1.5 text-xs bg-white border border-gray-200 rounded p-2 text-gray-700"><i class="fas fa-comment-alt mr-1 text-gray-400"></i><span class="font-semibold">Motivo:</span> ${ev.motivo}</div>` : ''}
-                            ${yaCorregido ? `<div class="mt-2 flex items-center gap-2 text-xs text-green-700 bg-green-50 border border-green-200 rounded p-2"><i class="fas fa-check-square text-green-600 mr-1"></i><span class="font-semibold">Corregido</span> por <strong>${ev.corregido_por}</strong> el ${ev.corregido_fecha} UTC</div>` : ''}
-                            ${mostrarCasilla ? `
-                            <div class="mt-2 bg-yellow-50 border border-yellow-300 rounded p-2">
-                                <label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-yellow-800">
-                                    <input type="checkbox" id="check-corregido-${id}" onchange="confirmarCorregido(${id}, this)" class="w-4 h-4 accent-yellow-500">
-                                    <i class="fas fa-tools mr-1"></i> Marcar como corregido y enviar a revisión
-                                </label>
-                                <p class="text-[10px] text-yellow-700 mt-1 ml-6">Al marcar esto, el registro volverá a estado <strong>Pendiente</strong> para que el supervisor lo revise nuevamente.</p>
-                            </div>` : ''}
-                        </div>
-                    </div>`;
-                }).join('');
-            }
-            document.getElementById('historial-modal').classList.remove('hidden');
-        }
-
-        function currentUsername() {
-            // El token ES el username directamente (no JWT)
-            return authToken || '';
-        }
-
-        async function confirmarCorregido(id, checkbox) {
-            if (!checkbox.checked) return;
-            checkbox.disabled = true;
-            const res = await fetch(`/api/marcar-corregido/${id}`, {
-                method: 'PUT',
-                headers: { 'Authorization': `Bearer ${authToken}` }
-            });
-            if (res.ok) {
-                document.getElementById('historial-modal').classList.add('hidden');
-                fetchData();
-            } else {
-                const err = await res.json();
-                alert('Error: ' + (err.detail || 'No se pudo marcar como corregido'));
-                checkbox.checked = false;
-                checkbox.disabled = false;
-            }
-        }
-
-        // ========== MODAL MOTIVO ==========
-        function pedirMotivo(titulo, callback) {
-            document.getElementById('motivo-titulo').textContent = titulo;
-            document.getElementById('motivo-texto').value = '';
-            document.getElementById('motivo-modal').classList.remove('hidden');
-            document.getElementById('motivo-texto').focus();
-
-            const btn = document.getElementById('motivo-confirmar-btn');
-            // Clonar para eliminar listeners anteriores
-            const newBtn = btn.cloneNode(true);
-            btn.parentNode.replaceChild(newBtn, btn);
-            newBtn.onclick = () => {
-                const motivo = document.getElementById('motivo-texto').value.trim();
-                if (!motivo) { alert('⚠️ Debes escribir un motivo.'); return; }
-                document.getElementById('motivo-modal').classList.add('hidden');
-                callback(motivo);
-            };
-        }
-
         async function cambiarEstado(id, direccion) {
-            if (direccion === 'siguiente') {
-                await fetch(`/api/avanzar-estado/${id}`, { method: 'PUT', headers: { 'Authorization': `Bearer ${authToken}` } });
-                fetchData();
-            } else {
-                // Revocar/Revertir requiere motivo
-                const registro = globalData.find(r => r.id === id);
-                const titulo = registro && registro.estado_pago === 'Pagado' ? 'Motivo de Reversión' : 'Motivo de Revocación';
-                pedirMotivo(titulo, async (motivo) => {
-                    await fetch(`/api/retroceder-estado/${id}`, {
-                        method: 'PUT',
-                        headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ motivo })
-                    });
-                    fetchData();
-                });
-            }
-        }
-
-        async function rechazarRegistro(id) {
-            pedirMotivo('Motivo de Rechazo', async (motivo) => {
-                const res = await fetch(`/api/rechazar-registro/${id}`, {
-                    method: 'PUT',
-                    headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ motivo })
-                });
-                if (!res.ok) {
-                    const err = await res.json();
-                    alert('Error: ' + (err.detail || 'No se pudo rechazar'));
-                }
-                fetchData();
-            });
+            const endpoint = direccion === 'siguiente' ? `/api/avanzar-estado/${id}` : `/api/retroceder-estado/${id}`;
+            await fetch(endpoint, { method: 'PUT', headers: { 'Authorization': `Bearer ${authToken}` } });
+            fetchData();
         }
 
         async function resetDB() {
             if(confirm("¡PELIGRO! ¿Estás seguro de que quieres borrar TODA la base de datos?")) {
-                if(confirm("¿Absolutamente seguro? Se borrarán TODOS los registros y se recrearán los usuarios.")) {
-                    const res = await fetch('/api/reset-db', { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` } });
-                    if (res.ok) {
-                        // Volver a hacer login automáticamente con admin
-                        alert("✅ Base de datos reiniciada.\n\nSe recrearon todos los usuarios.\nInicia sesión nuevamente con tus credenciales.");
-                    } else {
-                        alert("Error al reiniciar la base de datos.");
-                    }
+                if(confirm("¿Absolutamente seguro?")) {
+                    await fetch('/api/reset-db', { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` } });
+                    alert("Base de datos reiniciada. Inicia sesión nuevamente.");
                     logout();
                 }
             }
         }
 
         async function fetchData() {
-            try {
-                const res = await fetch('/api/ver-datos', { headers: { 'Authorization': `Bearer ${authToken}` } });
-                if (res.status === 401) {
-                    // Intentar recrear usuarios automáticamente (por si el servidor reinició)
-                    const recrear = await fetch('/api/recrear-usuarios', { method: 'POST' });
-                    if (recrear.ok) {
-                        // Reintentar login con las credenciales guardadas
-                        alert('⚠️ El servidor reinició. Por favor inicia sesión nuevamente.');
-                    }
-                    logout();
-                    return;
-                }
-                if (!res.ok) return;
-                const data = await res.json();
-                globalData = data.registros; 
-                applyFilters();
-            } catch(e) {
-                console.error('Error en fetchData:', e);
-            }
+            const res = await fetch('/api/ver-datos', { headers: { 'Authorization': `Bearer ${authToken}` } });
+            if (!res.ok) return logout();
+            const data = await res.json();
+            globalData = data.registros; 
+            applyFilters(); 
         }
 
         function applyFilters() {
@@ -907,13 +707,9 @@
                             <div class="w-5 h-5 rounded-full bg-gray-300"></div>
                         </div>
                         <span class="text-xs font-bold text-red-700 block text-center"><i class="fas fa-clock"></i> Pendiente</span>`;
-                    if (userRole === 'admin' || userRole === 'supervisor') {
-                        botonesAdmin = `
-                            <button onclick="cambiarEstado(${row.id}, 'siguiente')" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1.5 rounded text-[10px] font-bold uppercase shadow-sm w-full transition"><i class="fas fa-arrow-right mr-1"></i> Autorizar</button>
-                            <button onclick="rechazarRegistro(${row.id})" class="mt-1 bg-red-500 hover:bg-red-600 text-white px-2 py-1.5 rounded text-[10px] font-bold uppercase shadow-sm w-full transition"><i class="fas fa-ban mr-1"></i> Rechazar</button>`;
-                    } else {
-                        botonesAdmin = '';
-                    }
+                    botonesAdmin = (userRole === 'admin' || userRole === 'supervisor')
+                        ? `<button onclick="cambiarEstado(${row.id}, 'siguiente')" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1.5 rounded text-[10px] font-bold uppercase shadow-sm w-full transition"><i class="fas fa-arrow-right mr-1"></i> Autorizar</button>` 
+                        : '';
                 } else if (row.estado_pago === 'Autorizado') {
                     semaforoHTML = `
                         <div class="flex items-center justify-center space-x-1 mb-2">
@@ -930,20 +726,6 @@
                            </div>`;
                     } else if (userRole === 'supervisor') {
                         botonesAdmin = `<button onclick="cambiarEstado(${row.id}, 'anterior')" class="mt-2 bg-red-500 hover:bg-red-600 text-white px-2 py-1.5 rounded text-[10px] font-bold uppercase shadow-sm w-full transition"><i class="fas fa-arrow-left mr-1"></i> Revocar</button>`;
-                    } else {
-                        botonesAdmin = '';
-                    }
-                } else if (row.estado_pago === 'Rechazado') {
-                    semaforoHTML = `
-                        <div class="flex items-center justify-center space-x-1 mb-2">
-                            <div class="w-5 h-5 rounded-full bg-gray-400 shadow-lg border-2 border-gray-600"></div>
-                            <div class="w-5 h-5 rounded-full bg-gray-400 shadow-lg border-2 border-gray-600"></div>
-                            <div class="w-5 h-5 rounded-full bg-gray-400 shadow-lg border-2 border-gray-600"></div>
-                        </div>
-                        <span class="text-xs font-bold text-gray-600 block text-center"><i class="fas fa-ban"></i> Rechazado</span>`;
-                    if (userRole === 'admin' || userRole === 'supervisor') {
-                        botonesAdmin = `<button onclick="cambiarEstado(${row.id}, 'siguiente')" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1.5 rounded text-[10px] font-bold uppercase shadow-sm w-full transition"><i class="fas fa-arrow-right mr-1"></i> Autorizar</button>
-                            <button onclick="rechazarRegistro(${row.id})" class="mt-1 bg-red-500 hover:bg-red-600 text-white px-2 py-1.5 rounded text-[10px] font-bold uppercase shadow-sm w-full transition"><i class="fas fa-ban mr-1"></i> Rechazar</button>`;
                     } else {
                         botonesAdmin = '';
                     }
@@ -994,11 +776,6 @@
                             ${btnPagoAdmin}
                         </td>
                         <td class="p-3 align-middle">${facBadge}${compBadge}</td>
-                        <td class="p-3 text-center align-middle">
-                            <button onclick="openHistorial(${row.id})" class="bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-black px-2 py-1.5 rounded text-[10px] font-bold w-full transition shadow-sm" title="Ver historial">
-                                <i class="fas fa-history mr-1"></i> Ver
-                            </button>
-                        </td>
                         <td class="p-3 text-center align-middle">
                             <button onclick="openEdit(${row.id})" class="text-gray-400 hover:text-black text-lg mr-3 transition" title="Editar"><i class="fas fa-edit"></i></button>
                             <button onclick="deleteDoc(${row.id})" class="text-gray-400 hover:text-red-600 text-lg transition" title="Eliminar"><i class="fas fa-trash-alt"></i></button>
