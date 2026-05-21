@@ -3,6 +3,7 @@ from pathlib import Path
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
@@ -15,12 +16,16 @@ from security import verify_password, get_password_hash
 from routers.uploads import router as uploads_router
 from routers.documents import router as documents_router
 from routers.webhook import router as webhook_router
+from routers.providers import router as providers_router
 
 # 1. Crear carpetas y base de datos
 os.makedirs("uploads", exist_ok=True)
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="DataHub Ulma", version="4.4")
+
+# Montar la carpeta de uploads
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
@@ -30,6 +35,7 @@ app.add_middleware(
 app.include_router(uploads_router)
 app.include_router(documents_router)
 app.include_router(webhook_router)
+app.include_router(providers_router)
 
 # 3. Crear usuarios iniciales al arrancar
 @app.on_event("startup")
@@ -42,6 +48,16 @@ def startup_event():
     if usuarios_existentes == 0:
         print("Creando usuarios iniciales del sistema...")
         
+        # Asegurarse de que no existen para evitar duplicados
+        db.query(DBUser).filter(DBUser.username == "admin").delete()
+        db.query(DBUser).filter(DBUser.username == "usuario1").delete()
+        db.query(DBUser).filter(DBUser.username == "usuario2").delete()
+        db.query(DBUser).filter(DBUser.username == "usuarioA").delete()
+        db.query(DBUser).filter(DBUser.username == "usuarioB").delete()
+        db.query(DBUser).filter(DBUser.username == "usuarioC").delete()
+        db.query(DBUser).filter(DBUser.username == "usuarioD").delete()
+        db.commit()
+
         # Usuarios de nivel más bajo (proveedores)
         usuarios_proveedores = [
             DBUser(username="usuarioA", hashed_password=get_password_hash("pass123"), role="proveedor", subordinados=""),
@@ -91,11 +107,17 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     from permissions import obtener_info_usuario
     
     user = db.query(DBUser).filter(DBUser.username == form_data.username).first()
-    if not user or not verify_password(form_data.password, user.hashed_password):
+    if not user:
+        print(f"--- DEBUG: Intento de inicio de sesión fallido para usuario: {form_data.username} (Usuario no encontrado) ---")
+        raise HTTPException(status_code=400, detail="Usuario o contraseña incorrectos")
+    
+    if not verify_password(form_data.password, user.hashed_password):
+        print(f"--- DEBUG: Intento de inicio de sesión fallido para usuario: {form_data.username} (Contraseña incorrecta) ---")
         raise HTTPException(status_code=400, detail="Usuario o contraseña incorrectos")
     
     # Obtener información de permisos del usuario
-    info_usuario = obtener_info_usuario(user.username, db)
+    info_usuario = obtener_info_usuario(user.username, db);
+    print(f"--- DEBUG: Inicio de sesión exitoso para usuario: {user.username} con rol: {user.role} ---")
     
     return {
         "access_token": user.username,
@@ -103,3 +125,4 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         "role": user.role,
         "permisos": info_usuario
     }
+

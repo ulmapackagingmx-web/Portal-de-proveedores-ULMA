@@ -65,35 +65,25 @@ def puede_eliminar(username: str, registro_usuario: str, estado_pago: str, db: S
     """
     Verifica si el usuario puede eliminar un registro.
     
-    - proveedor: puede eliminar sus propios registros si están en estado "Rechazado"
-    - supervisor: puede eliminar registros de subordinados y propios si están en "Pendiente"
-    - admin: puede eliminar cualquier registro en cualquier estado
+    - Admin: Siempre puede borrar.
+    - Usuario (Subordinado/Supervisor): Puede borrar sus propios registros SOLO si están "Pendiente" o "Rechazado".
+    - Supervisor: Puede borrar registros de subordinados si están en "Pendiente".
     """
     usuario = db.query(DBUser).filter(DBUser.username == username).first()
+    if not usuario: return False
     
-    if not usuario:
-        return False
+    # El Admin puede borrar cualquier cosa en cualquier estado
+    if usuario.role == "admin": return True
     
-    if usuario.role == "admin":
-        return True
+    # REGLA SOLICITADA: Dueño puede borrar si está Pendiente o Rechazado
+    if registro_usuario == username:
+        return estado_pago in ["Pendiente", "Rechazado"]
     
+    # El supervisor puede borrar los de sus subordinados si aún están en Pendiente
     if usuario.role == "supervisor":
         subordinados = usuario.subordinados.split(",") if usuario.subordinados else []
         subordinados = [s.strip() for s in subordinados if s.strip()]
-        
-        # Puede eliminar registros de subordinados si están en Pendiente
-        if registro_usuario in subordinados and estado_pago == "Pendiente":
-            return True
-        
-        # Puede eliminar sus propios registros si están en Pendiente
-        if registro_usuario == username and estado_pago == "Pendiente":
-            return True
-        
-        return False
-    
-    # proveedor puede eliminar sus propios registros si están Rechazados
-    if usuario.role == "proveedor":
-        return registro_usuario == username and estado_pago == "Rechazado"
+        return registro_usuario in subordinados and estado_pago == "Pendiente"
     
     return False
 
@@ -102,7 +92,7 @@ def puede_autorizar(username: str, registro_usuario: str, db: Session) -> bool:
     Verifica si el usuario puede cambiar el estado de pago (autorizar/revertir).
     
     - proveedor: NO puede autorizar
-    - supervisor: puede autorizar registros de sus subordinados
+    - supervisor: puede autorizar registros de sus subordinados Y NO los suyos
     - admin: puede autorizar cualquier registro
     """
     usuario = db.query(DBUser).filter(DBUser.username == username).first()
@@ -116,7 +106,8 @@ def puede_autorizar(username: str, registro_usuario: str, db: Session) -> bool:
     if usuario.role == "supervisor":
         subordinados = usuario.subordinados.split(",") if usuario.subordinados else []
         subordinados = [s.strip() for s in subordinados if s.strip()]
-        return registro_usuario in subordinados
+        # Solo puede autorizar si el registro es de un subordinado Y NO es el suyo propio
+        return registro_usuario in subordinados and registro_usuario != username
     
     # proveedor no puede autorizar
     return False
@@ -181,3 +172,29 @@ def obtener_info_usuario(username: str, db: Session) -> dict:
         "puede_exportar": usuario.role in ["admin", "supervisor"],
         "puede_subir_pago": usuario.role in ["admin", "supervisor"]
     }
+
+# =========================================================
+# Nuevas funciones de Permisos para Proveedores
+# =========================================================
+
+def puede_ver_proveedores(username: str, db: Session) -> bool:
+    usuario = db.query(DBUser).filter(DBUser.username == username).first()
+    if not usuario: return False
+    return usuario.role in ["admin", "supervisor"] # Solo admin y supervisor pueden ver la lista
+
+def puede_editar_proveedor(username: str, proveedor_creador: str, db: Session) -> bool:
+    usuario = db.query(DBUser).filter(DBUser.username == username).first()
+    if not usuario: return False
+    # Admin puede editar cualquiera
+    if usuario.role == "admin": return True
+    # Supervisor puede editar cualquiera (se asume que los supervisores gestionan proveedores)
+    if usuario.role == "supervisor": return True
+    return False # Proveedor no puede editar proveedores
+
+
+def puede_eliminar_proveedor(username: str, proveedor_creador: str, db: Session) -> bool:
+    usuario = db.query(DBUser).filter(DBUser.username == username).first()
+    if not usuario: return False
+    # Solo el admin puede eliminar proveedores por ahora
+    return usuario.role == "admin"
+

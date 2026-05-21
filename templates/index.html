@@ -1,10 +1,11 @@
-
 <html lang="es">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Portal DataHub - Ulma</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <style>
         .ulma-red { background-color: #E3000F; } 
         .ulma-red-text { color: #E3000F; }
@@ -12,6 +13,11 @@
     </style>
 </head>
 <body class="text-gray-800 bg-gray-100 min-h-screen flex flex-col font-sans">
+
+    <!-- Contenedor para el Spinner de Carga -->
+    <div id="loader" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]">
+        <div class="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-white"></div>
+    </div>
     
     <!-- PANTALLA DE LOGIN -->
     <div id="login-screen" class="flex-grow flex items-center justify-center">
@@ -49,7 +55,11 @@
                 </svg>
                 <span class="text-gray-400 font-medium text-lg border-l border-gray-600 pl-4 uppercase tracking-wider">DataHub</span>
             </div>
-            <div>
+            <div class="flex items-center">
+                <!-- NEW TABS -->
+                <button id="tab-main" onclick="showMainView()" class="px-4 py-2 rounded-t-lg text-sm font-bold transition-colors mr-1 bg-white text-black">Inicio</button>
+                <button id="tab-providers" onclick="showProvidersView()" class="px-4 py-2 rounded-t-lg text-sm font-bold transition-colors mr-1 bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white">Datos Proveedores</button>
+                <button id="tab-indicators" onclick="showIndicatorsView()" class="px-4 py-2 rounded-t-lg text-sm font-bold transition-colors mr-4 bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white">Indicadores</button>
                 <span id="user-greeting" class="mr-4 text-sm font-semibold text-gray-300"></span>
                 <button onclick="logout()" class="ulma-red ulma-red-hover px-4 py-2 rounded text-sm font-bold uppercase tracking-wide transition-colors">Salir</button>
             </div>
@@ -83,9 +93,30 @@
                     <button onclick="openManualModal()" class="w-full bg-black hover:bg-gray-800 text-white py-2 rounded text-sm font-bold transition"><i class="fas fa-keyboard mr-1"></i> Abrir Formulario</button>
                 </div>
             </div>
-
             <!-- ÁREA DE TABLA PRINCIPAL -->
-            <div class="xl:col-span-5 flex flex-col h-full">
+            <div id="main-content-view" class="xl:col-span-5 flex flex-col h-full">
+
+                <!-- NUEVO DASHBOARD DE MÉTRICAS -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                    <div class="bg-white p-4 shadow rounded-lg border-l-4 border-green-500">
+                        <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Pagado este Mes</h3>
+                        <p id="kpi-pagado" class="text-3xl font-black text-green-600">$0.00</p>
+                    </div>
+                    <div class="bg-white p-4 shadow rounded-lg border-l-4 border-blue-500 cursor-pointer" onclick="aplicarFiltro('en_proceso')">
+                        <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider">En Proceso</h3>
+                        <p id="kpi-en-proceso" class="text-3xl font-black text-blue-600">$0.00</p>
+                    </div>
+                    <div class="bg-white p-4 shadow rounded-lg border-l-4 border-red-500 cursor-pointer" onclick="aplicarFiltro('rechazado')">
+                        <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Rechazado</h3>
+                        <p id="kpi-rechazado" class="text-3xl font-black text-red-600">$0.00</p>
+                    </div>
+
+                    <div class="bg-white p-4 shadow rounded-lg border-l-4 border-yellow-500 cursor-pointer" onclick="aplicarFiltro('pendiente')">
+                        <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Pendiente</h3>
+                        <p id="kpi-pendiente" class="text-3xl font-black text-yellow-600">$0.00</p>
+                    </div>
+                </div>
+
                 <!-- CABECERA Y FILTROS -->
                 <div class="bg-white p-4 shadow rounded-t-lg border-b-2 border-gray-200">
                     <div class="flex justify-between items-center mb-4">
@@ -94,10 +125,11 @@
                             <button onclick="openManualModal()" class="bg-white border-2 border-black text-black hover:bg-black hover:text-white px-3 py-1.5 rounded text-sm font-bold transition"><i class="fas fa-plus mr-1"></i> Manual</button>
                             <button onclick="fetchData()" class="bg-gray-200 text-black hover:bg-gray-300 px-3 py-1.5 rounded text-sm font-bold transition"><i class="fas fa-sync"></i> Actualizar</button>
                             <button id="btn-exportar" onclick="downloadExcel()" class="hidden ulma-red ulma-red-hover text-white px-3 py-1.5 rounded text-sm font-bold shadow transition"><i class="fas fa-download mr-1"></i> Exportar</button>
+                            <button id="btn-bulk-delete" onclick="bulkDelete()" class="hidden bg-gray-600 hover:bg-gray-700 text-white px-3 py-1.5 rounded text-sm font-bold shadow transition"><i class="fas fa-trash-sweep mr-1"></i> Eliminar Selección</button>
                             <button id="btn-reset" onclick="resetDB()" class="hidden bg-red-900 hover:bg-red-950 text-white px-3 py-1.5 rounded text-sm font-bold shadow transition" title="Borrar BD"><i class="fas fa-skull-crossbones mr-1"></i> Reset BD</button>
-                        </div>
-                    </div>
-                    
+            </div>
+        </div>
+
                     <div class="flex flex-col xl:flex-row justify-between items-center bg-gray-50 p-3 rounded border border-gray-200 gap-4">
                         <div class="flex flex-wrap w-full xl:w-3/4 gap-3">
                             <div class="relative flex-grow min-w-[250px]">
@@ -110,8 +142,8 @@
                                 <option value="CORREO">CORREO</option>
                                 <option value="EXCEL">EXCEL</option>
                                 <option value="MANUAL">MANUAL</option>
-                            </select>
-                            
+                </select>
+
                             <div class="flex items-center space-x-2 bg-white px-3 py-1.5 rounded border border-gray-300">
                                 <span class="text-xs font-bold text-gray-500">DESDE:</span>
                                 <input type="date" id="filtro-fecha-inicio" onchange="applyFilters()" class="text-sm focus:outline-none bg-transparent">
@@ -119,21 +151,35 @@
                             <div class="flex items-center space-x-2 bg-white px-3 py-1.5 rounded border border-gray-300">
                                 <span class="text-xs font-bold text-gray-500">HASTA:</span>
                                 <input type="date" id="filtro-fecha-fin" onchange="applyFilters()" class="text-sm focus:outline-none bg-transparent">
-                            </div>
+                </div>
                         </div>
 
                         <div class="w-full xl:w-1/4 text-right bg-white px-5 py-3 rounded border border-gray-200 shadow-sm">
                             <span class="text-xs font-bold text-gray-500 uppercase tracking-widest block mb-1">Sumatoria Mostrada</span>
                             <span id="suma-total" class="text-3xl font-black text-black leading-none">$0.00</span>
                         </div>
+                                    </div>
+                                </div>
+
+                <div class="bg-white shadow rounded-b-lg overflow-hidden flex-grow relative">
+                    <div id="empty-state" class="hidden absolute inset-0 flex flex-col items-center justify-center text-center p-10">
+                        <i class="fas fa-cloud-upload-alt text-5xl text-gray-300 mb-4"></i>
+                        <h3 class="font-bold text-xl text-gray-700">Aún no hay registros</h3>
+                        <p class="text-sm text-gray-500">Sube tu primer XML o crea un registro manual para empezar a gestionar tus documentos.</p>
                     </div>
-                </div>
-                
-                <div class="bg-white shadow rounded-b-lg overflow-hidden flex-grow">
-                    <div class="overflow-x-auto h-full">
+                    <div id="table-container" class="overflow-x-auto h-full">
                         <table class="w-full text-left text-base">
                             <thead class="bg-gray-200 text-gray-800 uppercase tracking-wider text-xs">
+                <tr id="bulk-controls" class="hidden bg-blue-50">
+                                    <th class="p-2 border-b border-gray-300 text-center">
+                                        <input type="checkbox" id="select-all" onclick="toggleSelectAll()">
+                                    </th>
+                                    <th colspan="9" class="p-2 border-b border-gray-300 text-xs text-blue-800 font-bold">
+                                        <span id="selected-count">0</span> seleccionados
+                                    </th>
+                                </tr>
                                 <tr>
+                                    <th class="p-3 border-b border-gray-300 w-12"></th> <!-- Checkbox column -->
                                     <th class="p-3 border-b border-gray-300 w-24">Origen</th>
                                     <th class="p-3 border-b border-gray-300">Datos Entidad</th>
                                     <th class="p-3 border-b border-gray-300 text-right">Importe Total</th>
@@ -145,11 +191,48 @@
                             </thead>
                             <tbody id="data-table" class="text-gray-700 font-medium text-sm"></tbody>
                         </table>
-                    </div>
+            </div>
+            </div>
+        </div>
+
+            <!-- NUEVO CONTENIDO PARA PROVEEDORES (Inicialmente oculto) -->
+            <div id="providers-content-view" class="hidden xl:col-span-5 flex-col h-full">
+                <div class="bg-white p-4 shadow rounded-t-lg border-b-2 border-gray-200">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-2xl font-black text-black leading-tight">GESTIÓN DE PROVEEDORES</h2>
+                        <button onclick="openCreateProviderModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-sm font-bold transition"><i class="fas fa-plus mr-1"></i> Nuevo Proveedor</button>
                 </div>
+        </div>
+                <div class="bg-white shadow rounded-b-lg overflow-hidden flex-grow">
+                    <div class="overflow-x-auto h-full">
+                        <table class="w-full text-left text-base">
+                            <thead class="bg-gray-200 text-gray-800 uppercase tracking-wider text-xs">
+                                <tr>
+                                    <th class="p-3 border-b border-gray-300">Nombre / RFC</th>
+                                    <th class="p-3 border-b border-gray-300">Datos Bancarios</th>
+                                    <th class="p-3 border-b border-gray-300">Expediente</th>
+                                    <th class="p-3 border-b border-gray-300">Campo Libre</th>
+                                    <th class="p-3 border-b border-gray-300 text-center w-24">Config</th>
+                                </tr>
+                            </thead>
+                            <tbody id="providers-table" class="text-gray-700 font-medium text-sm"></tbody>
+                        </table>
+                </div>
+            </div>
+            </div>
+
+            <!-- NUEVO CONTENIDO PARA INDICADORES (Inicialmente oculto) -->
+            <div id="indicators-content-view" class="hidden xl:col-span-5 flex-col h-full">
+                <div class="bg-white p-6 shadow rounded-lg border-l-4 border-purple-500 flex-grow flex items-center justify-center h-full">
+                    <div class="text-center">
+                        <i class="fas fa-chart-line text-6xl text-purple-300 mb-4"></i>
+                        <h3 class="font-bold text-xl text-gray-700">Dashboard de Indicadores</h3>
+                        <p class="text-sm text-gray-500">Esta sección contendrá gráficos y métricas avanzadas por proveedor, fechas y centros de costo. ¡Próximamente!</p>
             </div>
         </div>
     </div>
+                        </div>
+                        </div>
 
     <!-- Modal Edición -->
     <div id="edit-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
@@ -157,30 +240,75 @@
             <h2 class="font-black text-xl mb-4 uppercase">Editar Registro</h2>
             <input type="hidden" id="edit-id">
             <div class="space-y-3">
-                <input type="text" id="edit-rfc" placeholder="RFC del Beneficiario" class="w-full border p-2 rounded text-sm">
-                <input type="text" id="edit-nombre" placeholder="Nombre del Beneficiario" class="w-full border p-2 rounded text-sm">
-                <input type="number" step="0.01" id="edit-total" placeholder="Importe Total" class="w-full border p-2 rounded text-sm">
-                <input type="text" id="edit-folio" placeholder="Folio / Referencia" class="w-full border p-2 rounded text-sm">
-                <div class="grid grid-cols-2 gap-3">
-                    <input type="date" id="edit-fecha" class="w-full border p-2 rounded text-sm">
-                    <select id="edit-moneda" class="w-full border p-2 rounded text-sm">
-                        <option value="MXN">MXN</option>
-                        <option value="USD">USD</option>
-                        <option value="EUR">EUR</option>
-                    </select>
+                <div>
+                    <label for="edit-rfc" class="block text-xs font-bold text-gray-600 mb-1">RFC del Beneficiario</label>
+                    <input type="text" id="edit-rfc" class="w-full border p-2 rounded text-sm">
                 </div>
-                
-                <!-- Asignación Dinámica de Centros de Costo - EDICIÓN -->
-                <div class="border-2 border-gray-300 rounded p-3 bg-gray-50">
-                    <label class="block text-xs font-bold text-gray-700 uppercase mb-2">Asignación de Centros de Costo</label>
-                    <div id="edit-centros-container" class="space-y-2"></div>
-                    <div class="mt-2 flex justify-between items-center">
-                        <button type="button" onclick="agregarCentroEdit()" class="text-xs bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded font-bold transition">
-                            <i class="fas fa-plus mr-1"></i> Agregar Centro
-                        </button>
-                        <span id="edit-total-porcentaje" class="text-sm font-bold">Total: 0%</span>
+                <div>
+                    <label for="edit-nombre" class="block text-xs font-bold text-gray-600 mb-1">Nombre del Beneficiario</label>
+                    <input type="text" id="edit-nombre" class="w-full border p-2 rounded text-sm">
+                </div>
+                <div>
+                    <label for="edit-total" class="block text-xs font-bold text-gray-600 mb-1">Importe Total</label>
+                    <input type="number" step="0.01" id="edit-total" class="w-full border p-2 rounded text-sm">
+                </div>
+                <div>
+                    <label for="edit-folio" class="block text-xs font-bold text-gray-600 mb-1">Folio / Referencia</label>
+                    <input type="text" id="edit-folio" class="w-full border p-2 rounded text-sm">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                     <div>
+                        <label for="edit-fecha" class="block text-xs font-bold text-gray-600 mb-1">Fecha de Pago</label>
+                        <input type="date" id="edit-fecha" class="w-full border p-2 rounded text-sm">
+                    </div>
+                    <div>
+                        <label for="edit-moneda" class="block text-xs font-bold text-gray-600 mb-1">Moneda</label>
+                        <select id="edit-moneda" class="w-full border p-2 rounded text-sm">
+                            <option value="MXN">MXN</option>
+                            <option value="USD">USD</option>
+                            <option value="EUR">EUR</option>
+                        </select>
                     </div>
                 </div>
+                 <div>
+                    <label for="edit-comentarios" class="block text-xs font-bold text-gray-600 mb-1">Comentarios</label>
+                    <textarea id="edit-comentarios" class="w-full border p-2 rounded text-sm h-20"></textarea>
+                </div>
+
+                <!-- Asignación Dinámica de Centros de Costo - EDICIÓN -->
+                                <div class="border-2 border-gray-300 rounded p-3 bg-gray-50">
+                                    <label class="block text-xs font-bold text-gray-700 uppercase mb-2">Asignación de Centros de Costo</label>
+                                    <div id="edit-centros-container" class="space-y-2"></div>
+                                    <div class="mt-2 flex justify-between items-center">
+                                        <button type="button" id="btn-agregar-centro-edit" onclick="agregarCentroEdit()" class="text-xs bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded font-bold transition">
+                                            <i class="fas fa-plus mr-1"></i> Agregar Centro
+                                        </button>
+                                        <span id="edit-total-porcentaje" class="text-sm font-bold">Total: 0%</span>
+                                    </div>
+                                </div>
+
+                                <!-- Sección Condicional para REFACCIONES -->
+                                <div id="edit-refacciones-section" class="hidden space-y-3 bg-gray-50 border-gray-200 border-2 rounded p-4 mt-3">
+                                    <label class="block text-xs font-bold text-gray-700 uppercase">Detalles de Refacción</label>
+                                    <select id="edit-naturaleza" class="w-full border p-2 rounded text-sm">
+                                        <option value="">-- Naturaleza --</option>
+                                        <option value="Venta">Venta</option>
+                                        <option value="Costo de venta">Costo de venta</option>
+                                        <option value="Garantía">Garantía</option>
+                                    </select>
+                                    <div>
+                                        <label for="edit-cliente" class="block text-xs font-bold text-gray-600 mb-1">Cliente</label>
+                                        <input type="text" id="edit-cliente" class="w-full border p-2 rounded text-sm">
+                                    </div>
+                                    <div>
+                                        <label for="edit-modelo" class="block text-xs font-bold text-gray-600 mb-1">Modelo de Máquina</label>
+                                        <input type="text" id="edit-modelo" class="w-full border p-2 rounded text-sm">
+                                    </div>
+                                    <div>
+                                        <label for="edit-serie" class="block text-xs font-bold text-gray-600 mb-1">No. de Serie</label>
+                                        <input type="text" id="edit-serie" class="w-full border p-2 rounded text-sm">
+                                    </div>
+                                </div>
             </div>
             <div class="flex justify-end mt-6 space-x-3">
                 <button onclick="document.getElementById('edit-modal').classList.add('hidden')" class="px-4 py-2 bg-gray-200 font-bold rounded text-sm">Cancelar</button>
@@ -194,34 +322,261 @@
         <div class="bg-white p-6 rounded-lg shadow-2xl w-[500px] border-t-8 border-black max-h-[90vh] overflow-y-auto">
             <h2 class="font-black text-xl mb-4 uppercase">Registro Manual</h2>
             <div class="space-y-3">
-                <input type="text" id="man-rfc" placeholder="RFC del Beneficiario" class="w-full border p-2 rounded text-sm">
-                <input type="text" id="man-nombre" placeholder="Nombre del Beneficiario" class="w-full border p-2 rounded text-sm">
-                <input type="number" step="0.01" id="man-total" placeholder="Importe Total" class="w-full border p-2 rounded text-sm">
-                <input type="text" id="man-folio" placeholder="Folio / Referencia" class="w-full border p-2 rounded text-sm">
-                <div class="grid grid-cols-2 gap-3">
-                    <input type="date" id="man-fecha" class="w-full border p-2 rounded text-sm">
-                    <select id="man-moneda" class="w-full border p-2 rounded text-sm">
-                        <option value="MXN">MXN</option>
-                        <option value="USD">USD</option>
-                        <option value="EUR">EUR</option>
-                    </select>
+                <div>
+                    <label for="man-rfc" class="block text-xs font-bold text-gray-600 mb-1">RFC del Beneficiario</label>
+                    <input type="text" id="man-rfc" class="w-full border p-2 rounded text-sm">
                 </div>
-                
-                <!-- Asignación Dinámica de Centros de Costo - MANUAL -->
-                <div class="border-2 border-gray-300 rounded p-3 bg-gray-50">
-                    <label class="block text-xs font-bold text-gray-700 uppercase mb-2">Asignación de Centros de Costo</label>
-                    <div id="man-centros-container" class="space-y-2"></div>
-                    <div class="mt-2 flex justify-between items-center">
-                        <button type="button" onclick="agregarCentroManual()" class="text-xs bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded font-bold transition">
-                            <i class="fas fa-plus mr-1"></i> Agregar Centro
-                        </button>
-                        <span id="man-total-porcentaje" class="text-sm font-bold">Total: 0%</span>
+                <div>
+                    <label for="man-nombre" class="block text-xs font-bold text-gray-600 mb-1">Nombre del Beneficiario</label>
+                    <input type="text" id="man-nombre" class="w-full border p-2 rounded text-sm">
+                </div>
+                <div>
+                    <label for="man-total" class="block text-xs font-bold text-gray-600 mb-1">Importe Total</label>
+                    <input type="number" step="0.01" id="man-total" class="w-full border p-2 rounded text-sm">
+                </div>
+                <div>
+                    <label for="man-folio" class="block text-xs font-bold text-gray-600 mb-1">Folio / Referencia</label>
+                    <input type="text" id="man-folio" class="w-full border p-2 rounded text-sm">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label for="man-fecha" class="block text-xs font-bold text-gray-600 mb-1">Fecha de Pago</label>
+                        <input type="date" id="man-fecha" class="w-full border p-2 rounded text-sm">
+                    </div>
+                    <div>
+                        <label for="man-moneda" class="block text-xs font-bold text-gray-600 mb-1">Moneda</label>
+                        <select id="man-moneda" class="w-full border p-2 rounded text-sm">
+                            <option value="MXN">MXN</option>
+                            <option value="USD">USD</option>
+                            <option value="EUR">EUR</option>
+                        </select>
                     </div>
                 </div>
+                <div>
+                    <label for="man-comentarios" class="block text-xs font-bold text-gray-600 mb-1">Comentarios</label>
+                    <textarea id="man-comentarios" class="w-full border p-2 rounded text-sm h-20"></textarea>
+                </div>
+
+                <!-- Asignación Dinámica de Centros de Costo - MANUAL -->
+                                <div class="border-2 border-gray-300 rounded p-3 bg-gray-50">
+                                    <label class="block text-xs font-bold text-gray-700 uppercase mb-2">Asignación de Centros de Costo</label>
+                                    <div id="man-centros-container" class="space-y-2"></div>
+                                    <div class="mt-2 flex justify-between items-center">
+                                        <button type="button" id="btn-agregar-centro-manual" onclick="agregarCentroManual()" class="text-xs bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded font-bold transition">
+                                            <i class="fas fa-plus mr-1"></i> Agregar Centro
+                                        </button>
+                                        <span id="man-total-porcentaje" class="text-sm font-bold">Total: 0%</span>
+                                    </div>
+                                </div>
+
+                                <!-- Sección Condicional para REFACCIONES -->
+                                <div id="man-refacciones-section" class="hidden space-y-3 bg-gray-50 border-gray-200 border-2 rounded p-4 mt-3">
+                                    <label class="block text-xs font-bold text-gray-700 uppercase">Detalles de Refacción</label>
+                                    <select id="man-naturaleza" class="w-full border p-2 rounded text-sm">
+                                        <option value="">-- Naturaleza --</option>
+                                        <option value="Venta">Venta</option>
+                                        <option value="Costo de venta">Costo de venta</option>
+                                        <option value="Garantía">Garantía</option>
+                                    </select>
+                                    <div>
+                                        <label for="man-cliente" class="block text-xs font-bold text-gray-600 mb-1">Cliente</label>
+                                        <input type="text" id="man-cliente" class="w-full border p-2 rounded text-sm">
+                                    </div>
+                                    <div>
+                                        <label for="man-modelo" class="block text-xs font-bold text-gray-600 mb-1">Modelo de Máquina</label>
+                                        <input type="text" id="man-modelo" class="w-full border p-2 rounded text-sm">
+                                    </div>
+                                    <div>
+                                        <label for="man-serie" class="block text-xs font-bold text-gray-600 mb-1">No. de Serie</label>
+                                        <input type="text" id="man-serie" class="w-full border p-2 rounded text-sm">
+                                    </div>
+                                </div>
             </div>
             <div class="flex justify-end mt-6">
                 <button onclick="document.getElementById('manual-modal').classList.add('hidden')" class="px-4 py-2 bg-gray-200 mr-3 rounded font-bold text-sm">Cancelar</button>
                 <button onclick="saveManual()" class="px-4 py-2 bg-black text-white rounded font-bold text-sm">Registrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Crear Proveedor -->
+    <div id="create-provider-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg shadow-2xl w-[500px] border-t-8 border-blue-600 max-h-[90vh] overflow-y-auto">
+            <h2 class="font-black text-xl mb-4 uppercase">Registrar Nuevo Proveedor</h2>
+            <div class="space-y-3">
+                <div><label for="create-provider-nombre" class="block text-xs font-bold text-gray-600 mb-1">Nombre del Proveedor</label><input type="text" id="create-provider-nombre" class="w-full border p-2 rounded text-sm"></div>
+                <div><label for="create-provider-rfc" class="block text-xs font-bold text-gray-600 mb-1">RFC del Proveedor</label><input type="text" id="create-provider-rfc" class="w-full border p-2 rounded text-sm uppercase"></div>
+                <div><label for="create-provider-banco" class="block text-xs font-bold text-gray-600 mb-1">Banco</label><input type="text" id="create-provider-banco" class="w-full border p-2 rounded text-sm"></div>
+                <div><label for="create-provider-cuenta" class="block text-xs font-bold text-gray-600 mb-1">Número de Cuenta / CLABE</label><input type="text" id="create-provider-cuenta" class="w-full border p-2 rounded text-sm"></div>
+                <div><label for="create-provider-tipo-operacion" class="block text-xs font-bold text-gray-600 mb-1">Tipo de Operación</label><select id="create-provider-tipo-operacion" class="w-full border p-2 rounded text-sm"><option value="">-- Seleccionar --</option><option value="Convenio CIE">Convenio CIE</option><option value="Interbancario">Interbancario</option><option value="Mismo Banco">Mismo Banco</option></select></div>
+                <div><label for="create-provider-expediente" class="block text-xs font-bold text-gray-600 mb-1">Información de Expediente (Documentos, Contratos)</label><textarea id="create-provider-expediente" class="w-full border p-2 rounded text-sm h-20"></textarea></div>
+                <div><label for="create-provider-campo-libre" class="block text-xs font-bold text-gray-600 mb-1">Notas / Campo Libre</label><textarea id="create-provider-campo-libre" class="w-full border p-2 rounded text-sm h-20"></textarea></div>
+            </div>
+            <div class="flex justify-end mt-6 space-x-3">
+                <button onclick="document.getElementById('create-provider-modal').classList.add('hidden')" class="px-4 py-2 bg-gray-200 font-bold rounded text-sm">Cancelar</button>
+                <button onclick="saveNewProvider()" class="px-4 py-2 bg-blue-600 text-white font-bold rounded text-sm">Guardar Proveedor</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Editar Proveedor -->
+    <div id="edit-provider-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg shadow-2xl w-[500px] border-t-8 border-blue-600 max-h-[90vh] overflow-y-auto">
+            <h2 class="font-black text-xl mb-4 uppercase">Editar Proveedor</h2>
+            <div class="space-y-3">
+                <div><label for="edit-provider-nombre" class="block text-xs font-bold text-gray-600 mb-1">Nombre del Proveedor</label><input type="text" id="edit-provider-nombre" class="w-full border p-2 rounded text-sm"></div>
+                <div><label for="edit-provider-rfc" class="block text-xs font-bold text-gray-600 mb-1">RFC del Proveedor</label><input type="text" id="edit-provider-rfc" readonly class="w-full border p-2 rounded text-sm bg-gray-100 cursor-not-allowed"></div>
+                <div><label for="edit-provider-banco" class="block text-xs font-bold text-gray-600 mb-1">Banco</label><input type="text" id="edit-provider-banco" class="w-full border p-2 rounded text-sm"></div>
+                <div><label for="edit-provider-cuenta" class="block text-xs font-bold text-gray-600 mb-1">Número de Cuenta / CLABE</label><input type="text" id="edit-provider-cuenta" class="w-full border p-2 rounded text-sm"></div>
+                <div><label for="edit-provider-tipo-operacion" class="block text-xs font-bold text-gray-600 mb-1">Tipo de Operación</label><select id="edit-provider-tipo-operacion" class="w-full border p-2 rounded text-sm"><option value="">-- Seleccionar --</option><option value="Convenio CIE">Convenio CIE</option><option value="Interbancario">Interbancario</option><option value="Mismo Banco">Mismo Banco</option></select></div>
+                <div id="edit-provider-validation-controls" class="pt-2 border-t mt-4">
+                    <div class="flex justify-around items-center text-sm">
+                        <div class="text-center"><span class="font-bold text-gray-600">Val. Bancaria:</span> <span id="edit-provider-bancaria-status" class="text-lg"></span></div>
+                        <div class="text-center"><span class="font-bold text-gray-600">Val. Expediente:</span> <span id="edit-provider-expediente-status" class="text-lg"></span></div>
+                    </div>
+                </div>
+                <div><label for="edit-provider-expediente" class="block text-xs font-bold text-gray-600 mb-1">Información de Expediente (Documentos, Contratos)</label><textarea id="edit-provider-expediente" class="w-full border p-2 rounded text-sm h-20"></textarea></div>
+                <div><label for="edit-provider-campo-libre" class="block text-xs font-bold text-gray-600 mb-1">Notas / Campo Libre</label><textarea id="edit-provider-campo-libre" class="w-full border p-2 rounded text-sm h-20"></textarea></div>
+            </div>
+            <div class="flex justify-end mt-6 space-x-3">
+                <button onclick="document.getElementById('edit-provider-modal').classList.add('hidden')" class="px-4 py-2 bg-gray-200 font-bold rounded text-sm">Cancelar</button>
+                <button onclick="saveEditedProvider()" class="px-4 py-2 bg-blue-600 text-white font-bold rounded text-sm">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Logística (Edición Rápida) -->
+    <div id="logistics-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg shadow-2xl w-[500px] border-t-8 border-yellow-500 max-h-[90vh] overflow-y-auto">
+            <h2 class="font-black text-xl mb-4 uppercase">Edición Rápida de Logística</h2>
+            <input type="hidden" id="log-id">
+            <div class="space-y-3">
+                <div>
+                    <label for="log-fecha" class="block text-xs font-bold text-gray-600 mb-1">Fecha de Pago</label>
+                    <input type="date" id="log-fecha" class="w-full border p-2 rounded text-sm">
+                </div>
+                <div class="border-2 border-gray-300 rounded p-3 bg-gray-50">
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-2">Asignación de Centros de Costo</label>
+                    <div id="log-centros-container" class="space-y-2"></div>
+                    <div class="mt-2 flex justify-between items-center">
+                        <button type="button" id="btn-agregar-centro-log" onclick="agregarCentroLog()" class="text-xs bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded font-bold transition">
+                            <i class="fas fa-plus mr-1"></i> Agregar Centro
+                        </button>
+                        <span id="log-total-porcentaje" class="text-sm font-bold">Total: 0%</span>
+            </div>
+                        </div>
+                        </div>
+            <div class="flex justify-end mt-6 space-x-3">
+                <button onclick="document.getElementById('logistics-modal').classList.add('hidden')" class="px-4 py-2 bg-gray-200 font-bold rounded text-sm">Cancelar</button>
+                <button onclick="saveLogistics()" class="px-4 py-2 bg-yellow-500 text-white font-bold rounded text-sm">Guardar Logística</button>
+    </div>
+                                </div>
+                                </div>
+
+    <!-- Modal de Comentarios -->
+    <div id="comments-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg shadow-2xl w-[450px] border-t-8 border-gray-700">
+            <h2 class="font-black text-xl mb-4 uppercase">Comentarios</h2>
+            <input type="hidden" id="comment-id">
+            <textarea id="comment-text" class="w-full border p-2 rounded text-sm h-40"></textarea>
+            <div class="flex justify-end mt-6 space-x-3">
+                <button onclick="document.getElementById('comments-modal').classList.add('hidden')" class="px-4 py-2 bg-gray-200 font-bold rounded text-sm">Cancelar</button>
+                <button onclick="saveComment()" class="px-4 py-2 bg-black text-white font-bold rounded text-sm">Guardar</button>
+    </div>
+                            </div>
+                        </div>
+
+    <!-- Modal Historial -->
+    <div id="history-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg shadow-2xl w-[450px] border-t-8 border-blue-600 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="font-black text-xl uppercase">Historial de Cambios</h2>
+                <button onclick="document.getElementById('history-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-800 text-2xl">&times;</button>
+            </div>
+            <div id="history-content" class="space-y-3"></div>
+        </div>
+    </div>
+
+    <!-- Modal Exportación Excel -->
+    <div id="export-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[60]">
+        <div class="bg-white p-6 rounded-lg shadow-2xl w-[600px] border-t-8 border-red-600">
+            <h2 class="font-black text-xl mb-4 uppercase">Configurar Exportación Excel</h2>
+            <p class="text-xs text-gray-500 mb-4">Selecciona los campos que deseas incluir en el reporte:</p>
+            
+            <div class="grid grid-cols-2 gap-2 mb-6 max-h-[300px] overflow-y-auto p-2 border rounded">
+                <label class="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                    <input type="checkbox" class="export-field" value="ID" checked> <span class="text-sm">ID Registro</span>
+                </label>
+                <label class="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                    <input type="checkbox" class="export-field" value="Origen" checked> <span class="text-sm">Origen (XML/Manual/etc)</span>
+                </label>
+                <label class="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                    <input type="checkbox" class="export-field" value="RFC Emisor" checked> <span class="text-sm">RFC Emisor</span>
+                </label>
+                <label class="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                    <input type="checkbox" class="export-field" value="Nombre Emisor" checked> <span class="text-sm">Nombre Emisor</span>
+                </label>
+                <label class="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                    <input type="checkbox" class="export-field" value="UUID/Folio" checked> <span class="text-sm">UUID / Folio</span>
+                </label>
+                <label class="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                    <input type="checkbox" class="export-field" value="Total" checked> <span class="text-sm">Importe Total</span>
+                </label>
+                <label class="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                    <input type="checkbox" class="export-field" value="Moneda" checked> <span class="text-sm">Moneda</span>
+                </label>
+                <label class="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                    <input type="checkbox" class="export-field" value="Fecha Emisión" checked> <span class="text-sm">Fecha Factura/XML</span>
+                </label>
+                <label class="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                    <input type="checkbox" class="export-field" value="Fecha Registro" checked> <span class="text-sm">Fecha de Carga</span>
+                </label>
+                <label class="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                    <input type="checkbox" class="export-field" value="Usuario" checked> <span class="text-sm">Cargado por (Usuario)</span>
+                </label>
+                <label class="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                    <input type="checkbox" class="export-field" value="Centro Costo" checked> <span class="text-sm">Centro de Costo</span>
+                </label>
+                <label class="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                    <input type="checkbox" class="export-field" value="Subcatálogo" checked> <span class="text-sm">Subcatálogo</span>
+                </label>
+                <label class="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                    <input type="checkbox" class="export-field" value="Porcentaje" checked> <span class="text-sm">Distribución %</span>
+                </label>
+                <label class="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                    <input type="checkbox" class="export-field" value="Fecha Pago" checked> <span class="text-sm">Fecha de Pago</span>
+                </label>
+                <label class="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                    <input type="checkbox" class="export-field" value="Estado" checked> <span class="text-sm">Estado Actual</span>
+                </label>
+                <label class="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                    <input type="checkbox" class="export-field" value="Uso CFDI" checked> <span class="text-sm">Uso CFDI</span>
+                </label>
+                <label class="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                    <input type="checkbox" class="export-field" value="Forma Pago" checked> <span class="text-sm">Forma de Pago</span>
+                </label>
+                <label class="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                    <input type="checkbox" class="export-field" value="Método Pago" checked> <span class="text-sm">Método de Pago</span>
+                </label>
+                <label class="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                    <input type="checkbox" class="export-field" value="Clave SAT" checked> <span class="text-sm">Clave SAT</span>
+                </label>
+                <label class="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                    <input type="checkbox" class="export-field" value="Descripción SAT" checked> <span class="text-sm">Descripción XML</span>
+                </label>
+                <label class="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                    <input type="checkbox" class="export-field" value="Comentarios" checked> <span class="text-sm">Comentarios Libres</span>
+                </label>
+            </div>
+
+            <div class="flex justify-between items-center">
+                <button onclick="toggleAllFields(true)" class="text-xs text-blue-600 font-bold hover:underline">Seleccionar Todos</button>
+                <button onclick="toggleAllFields(false)" class="text-xs text-red-600 font-bold hover:underline">Desmarcar Todos</button>
+            </div>
+
+            <div class="flex justify-end mt-6 space-x-3">
+                <button onclick="document.getElementById('export-modal').classList.add('hidden')" class="px-4 py-2 bg-gray-200 font-bold rounded text-sm">Cancelar</button>
+                <button onclick="executeExport()" class="px-4 py-2 bg-red-600 text-white font-bold rounded text-sm shadow hover:bg-red-700">Generar Excel</button>
             </div>
         </div>
     </div>
@@ -232,18 +587,31 @@
         let globalData = []; 
 
         // Subcatálogos por centro de costo
+        const listaSub = [
+            'FERIAS',
+            'FLETES',
+            'GASTOS GENERALES',
+            'UNIFORMES',
+            'MAQUINADOS',
+            'CURSOS Y CAPACITACIÓN',
+            'SOFTWARES Y LICENCIAS',
+            'SERVICIOS ADMINISTRATIVOS',
+            'PUBLICIDAD',
+            'REFACCIONES'
+        ];
+
         const subcatalogos = {
-            'Administración': ['SERVICIOS ADMINISTRATIVOS', 'CAPACITACION'],
-            'Comercial': ['SERVICIOS Y FERIAS'],
-            'Servicio': ['IMPORTACION Y MÁQUINAS']
+            'Administración': listaSub,
+            'Comercial': listaSub,
+            'Servicio': listaSub
         };
 
         // Contadores para IDs únicos
         let manualCentroCounter = 0;
         let editCentroCounter = 0;
+        let logCentroCounter = 0;
 
         window.onload = () => { if (authToken) showDashboard(); };
-
         async function login() {
             const formData = new URLSearchParams();
             formData.append('username', document.getElementById("username").value);
@@ -256,14 +624,17 @@
                 localStorage.setItem("token", authToken);
                 localStorage.setItem("role", userRole);
                 showDashboard();
-            } else alert("Credenciales incorrectas");
+            } else {
+                const errorData = await res.json();
+                showToast(`❌ Error de inicio de sesión: ${errorData.detail}`, true);
+            }
         }
 
         function logout() { localStorage.clear(); location.reload(); }
-        
-        function showDashboard() { 
-            document.getElementById("login-screen").classList.add("hidden"); 
-            document.getElementById("dashboard-screen").classList.remove("hidden"); 
+
+        function showDashboard() {
+            document.getElementById("login-screen").classList.add("hidden");
+            document.getElementById("dashboard-screen").classList.remove("hidden");
             document.getElementById("user-greeting").innerText = (userRole === 'admin' ? "👑 " : userRole === 'supervisor' ? "👔 " : "👤 ") + localStorage.getItem("token");
             
             if(userRole === 'admin') {
@@ -276,31 +647,89 @@
                 document.getElementById('btn-exportar').classList.add('hidden');
                 document.getElementById('btn-reset').classList.add('hidden');
             }
-            fetchData(); 
+            showMainView(); // Show main view by default
         }
 
-        async function uploadXML() { 
+        function showLoader() { document.getElementById('loader').classList.remove('hidden'); }
+        function hideLoader() { document.getElementById('loader').classList.add('hidden'); }
+
+        function showToast(message, isError = false) {
+            Toastify({
+                text: message,
+                duration: 3000,
+                close: true,
+                gravity: "top",
+                position: "right",
+                backgroundColor: isError ? "#E3000F" : "#28a745",
+            }).showToast();
+        }
+        // =========================================================
+        // Funciones para la Vista Principal (Registros Consolidados)
+        // =========================================================
+        function showMainView() {
+            document.getElementById('main-content-view').classList.remove('hidden');
+            document.getElementById('providers-content-view').classList.add('hidden');
+            document.getElementById('indicators-content-view').classList.add('hidden'); // NEW
+
+            document.getElementById('tab-main').classList.remove('bg-gray-700', 'text-gray-300', 'hover:bg-gray-600', 'hover:text-white');
+            document.getElementById('tab-main').classList.add('bg-white', 'text-black');
+
+            document.getElementById('tab-providers').classList.remove('bg-white', 'text-black');
+            document.getElementById('tab-providers').classList.add('bg-gray-700', 'text-gray-300', 'hover:bg-gray-600', 'hover:text-white');
+
+            document.getElementById('tab-indicators').classList.remove('bg-white', 'text-black'); // NEW
+            document.getElementById('tab-indicators').classList.add('bg-gray-700', 'text-gray-300', 'hover:bg-gray-600', 'hover:text-white'); // NEW
+
+                fetchData();
+            }
+
+        async function uploadXML() {
             const input = document.getElementById('xml-file');
-            if (input.files.length === 0) return alert("Selecciona al menos un archivo XML");
+            if (input.files.length === 0) return showToast("Selecciona al menos un archivo XML", true);
+            showLoader();
             const fd = new FormData(); 
             for (let i = 0; i < input.files.length; i++) fd.append('files', input.files[i]);
-            await fetch('/api/subir-xml', { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` }, body: fd });
-            input.value = ""; fetchData(); 
+            const res = await fetch('/api/subir-xml', { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` }, body: fd });
+            hideLoader();
+            if (res.ok) {
+                showToast("✅ XML(s) procesados con éxito");
+                input.value = "";
+                fetchData();
+            } else {
+                showToast("❌ Error al procesar los archivos", true);
+            }
         }
 
         async function uploadExcel() { 
             const file = document.getElementById('excel-file').files[0];
-            if (!file) return alert("Selecciona un archivo");
+            if (!file) return showToast("Selecciona un archivo Excel", true);
+            showLoader();
             const fd = new FormData(); fd.append('file', file);
-            await fetch('/api/subir-excel', { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` }, body: fd });
-            document.getElementById('excel-file').value = ""; fetchData();
+            const res = await fetch('/api/subir-excel', { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` }, body: fd });
+            hideLoader();
+            if (res.ok) {
+                showToast("✅ Excel procesado con éxito");
+                document.getElementById('excel-file').value = ""; 
+                fetchData();
+            } else {
+                showToast("❌ Error al procesar el archivo Excel", true);
+            }
         }
 
         async function uploadText() {
             const txt = document.getElementById("text-input").value;
+            if (!txt.trim()) return showToast("El campo de texto no puede estar vacío", true);
+            showLoader();
             const fd = new FormData(); fd.append("texto_correo", txt);
-            await fetch('/api/subir-texto', { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` }, body: fd });
-            document.getElementById("text-input").value = ""; fetchData();
+            const res = await fetch('/api/subir-texto', { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` }, body: fd });
+            hideLoader();
+            if (res.ok) {
+                showToast("✅ Texto procesado con éxito");
+                document.getElementById("text-input").value = ""; 
+                fetchData();
+            } else {
+                showToast("❌ Error al procesar el texto", true);
+            }
         }
 
         // ========== FUNCIONES PARA CENTROS DE COSTO DINÁMICOS - MANUAL ==========
@@ -309,6 +738,26 @@
             manualCentroCounter = 0;
             document.getElementById('man-centros-container').innerHTML = '';
             agregarCentroManual(); // Agregar el primer centro automáticamente
+        }
+
+        function checkRefaccionesVisibility(prefix) {
+            const container = document.getElementById(`${prefix}-centros-container`);
+            const refaccionesSection = document.getElementById(`${prefix}-refacciones-section`);
+            if (!container || !refaccionesSection) return;
+
+            const subSelects = container.querySelectorAll('select[id^="' + prefix + '-subcatalogo-"]');
+            let show = false;
+            subSelects.forEach(select => {
+                if (select.value === 'REFACCIONES') {
+                    show = true;
+                }
+            });
+
+            if (show) {
+                refaccionesSection.classList.remove('hidden');
+            } else {
+                refaccionesSection.classList.add('hidden');
+            }
         }
 
         function agregarCentroManual() {
@@ -325,7 +774,7 @@
                     <option value="Comercial">Comercial</option>
                     <option value="Servicio">Servicio</option>
                 </select>
-                <select class="w-32 border border-gray-300 p-1.5 rounded text-xs" id="man-subcatalogo-${id}">
+                <select class="w-32 border border-gray-300 p-1.5 rounded text-xs" id="man-subcatalogo-${id}" onchange="checkRefaccionesVisibility('man')">
                     <option value="">Subcatálogo</option>
                 </select>
                 <input type="number" min="0" max="100" step="0.01" placeholder="%" onchange="calcularTotalManual()" class="w-16 border border-gray-300 p-1.5 rounded text-xs text-center" id="man-porcentaje-${id}">
@@ -352,6 +801,7 @@
             const elem = document.getElementById(`man-centro-${id}`);
             if (elem) elem.remove();
             calcularTotalManual();
+            checkRefaccionesVisibility('man');
         }
 
         function calcularTotalManual() {
@@ -365,6 +815,13 @@
             const totalSpan = document.getElementById('man-total-porcentaje');
             totalSpan.textContent = `Total: ${total.toFixed(2)}%`;
             totalSpan.className = total === 100 ? 'text-sm font-bold text-green-600' : 'text-sm font-bold text-red-600';
+
+            const addButton = document.getElementById('btn-agregar-centro-manual');
+            if (total >= 100) {
+                addButton.classList.add('hidden');
+            } else {
+                addButton.classList.remove('hidden');
+            }
         }
 
         function obtenerCentrosManual() {
@@ -405,12 +862,19 @@
                 return;
             }
 
-            // Construir string de porcentajes
-            let porcentajeStr = '';
-            if (centros.length === 1 && centros[0].porcentaje === 100) {
-                porcentajeStr = '100%';
-            } else {
-                porcentajeStr = centros.map(c => `${c.centro}:${c.porcentaje}%`).join(',');
+            let porcentajeStr = centros.length === 1 && centros[0].porcentaje === 100
+                ? '100%'
+                : centros.map(c => `${c.centro}:${c.porcentaje}%`).join(',');
+
+            const refaccionesSection = document.getElementById('man-refacciones-section');
+            let refaccionesData = {};
+            if (!refaccionesSection.classList.contains('hidden')) {
+                refaccionesData = {
+                    naturaleza: document.getElementById('man-naturaleza').value,
+                    cliente: document.getElementById('man-cliente').value,
+                    modelo_maquina: document.getElementById('man-modelo').value,
+                    numero_serie: document.getElementById('man-serie').value,
+                };
             }
 
             const body = JSON.stringify({
@@ -422,22 +886,32 @@
                 subcatalogo: centros[0].subcatalogo,
                 porcentaje: porcentajeStr,
                 moneda: document.getElementById('man-moneda').value || 'MXN',
-                fecha: document.getElementById('man-fecha').value || 'POR DEFINIR'
+                fecha: document.getElementById('man-fecha').value || 'POR DEFINIR',
+                comentarios: document.getElementById('man-comentarios').value || '',
+                ...refaccionesData
             });
             
-            await fetch('/api/subir-manual', { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' }, body });
-            document.getElementById('manual-modal').classList.add('hidden');
-            
-            // Limpiar formulario
-            document.getElementById('man-rfc').value = '';
-            document.getElementById('man-nombre').value = '';
-            document.getElementById('man-total').value = '';
-            document.getElementById('man-folio').value = '';
-            document.getElementById('man-moneda').value = 'MXN';
-            document.getElementById('man-fecha').value = '';
-            document.getElementById('man-centros-container').innerHTML = '';
-            
-            fetchData();
+            showLoader();
+            const res = await fetch('/api/subir-manual', { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' }, body });
+            hideLoader();
+
+            if (res.ok) {
+                showToast("✅ Registro manual guardado");
+                document.getElementById('manual-modal').classList.add('hidden');
+
+                // Limpiar formulario
+                document.getElementById('man-rfc').value = '';
+                document.getElementById('man-nombre').value = '';
+                document.getElementById('man-total').value = '';
+                document.getElementById('man-folio').value = '';
+                document.getElementById('man-moneda').value = 'MXN';
+                document.getElementById('man-fecha').value = '';
+                document.getElementById('man-centros-container').innerHTML = '';
+                
+                fetchData();
+            } else {
+                showToast("❌ Error al guardar el registro manual", true);
+            }
         }
 
         // ========== FUNCIONES PARA CENTROS DE COSTO DINÁMICOS - EDICIÓN ==========
@@ -455,7 +929,7 @@
                     <option value="Comercial">Comercial</option>
                     <option value="Servicio">Servicio</option>
                 </select>
-                <select class="w-32 border border-gray-300 p-1.5 rounded text-xs" id="edit-subcatalogo-${id}">
+                <select class="w-32 border border-gray-300 p-1.5 rounded text-xs" id="edit-subcatalogo-${id}" onchange="checkRefaccionesVisibility('edit')">
                     <option value="">Subcatálogo</option>
                 </select>
                 <input type="number" min="0" max="100" step="0.01" placeholder="%" onchange="calcularTotalEdit()" class="w-16 border border-gray-300 p-1.5 rounded text-xs text-center" id="edit-porcentaje-${id}">
@@ -482,6 +956,7 @@
             const elem = document.getElementById(`edit-centro-${id}`);
             if (elem) elem.remove();
             calcularTotalEdit();
+            checkRefaccionesVisibility('edit');
         }
 
         function calcularTotalEdit() {
@@ -495,6 +970,13 @@
             const totalSpan = document.getElementById('edit-total-porcentaje');
             totalSpan.textContent = `Total: ${total.toFixed(2)}%`;
             totalSpan.className = total === 100 ? 'text-sm font-bold text-green-600' : 'text-sm font-bold text-red-600';
+            
+            const addButton = document.getElementById('btn-agregar-centro-edit');
+            if (total >= 100) {
+                addButton.classList.add('hidden');
+            } else {
+                addButton.classList.remove('hidden');
+            }
         }
 
         function obtenerCentrosEdit() {
@@ -530,8 +1012,15 @@
             document.getElementById('edit-nombre').value = registro.nombre || '';
             document.getElementById('edit-total').value = registro.total || '';
             document.getElementById('edit-folio').value = registro.uuid_folio || '';
+            document.getElementById('edit-comentarios').value = registro.comentarios || '';
             document.getElementById('edit-fecha').value = registro.fecha_pago !== 'POR DEFINIR' ? registro.fecha_pago : '';
             document.getElementById('edit-moneda').value = registro.moneda || 'MXN';
+
+            // Cargar datos de refacciones
+            document.getElementById('edit-naturaleza').value = registro.naturaleza || '';
+            document.getElementById('edit-cliente').value = registro.cliente || '';
+            document.getElementById('edit-modelo').value = registro.modelo_maquina || '';
+            document.getElementById('edit-serie').value = registro.numero_serie || '';
             
             // Limpiar y cargar centros de costo
             editCentroCounter = 0;
@@ -564,6 +1053,7 @@
             }
             
             calcularTotalEdit();
+            checkRefaccionesVisibility('edit'); // Comprobar visibilidad al abrir
             document.getElementById('edit-modal').classList.remove('hidden');
         }
 
@@ -583,14 +1073,22 @@
             }
 
             // Construir string de porcentajes
-            let porcentajeStr = '';
-            if (centros.length === 1 && centros[0].porcentaje === 100) {
-                porcentajeStr = '100%';
-            } else {
-                porcentajeStr = centros.map(c => `${c.centro}:${c.porcentaje}%`).join(',');
+            let porcentajeStr = centros.length === 1 && centros[0].porcentaje === 100
+                ? '100%'
+                : centros.map(c => `${c.centro}:${c.porcentaje}%`).join(',');
+
+            const refaccionesSection = document.getElementById('edit-refacciones-section');
+            let refaccionesData = {};
+            if (!refaccionesSection.classList.contains('hidden')) {
+                refaccionesData = {
+                    naturaleza: document.getElementById('edit-naturaleza').value,
+                    cliente: document.getElementById('edit-cliente').value,
+                    modelo_maquina: document.getElementById('edit-modelo').value,
+                    numero_serie: document.getElementById('edit-serie').value,
+                };
             }
-            
-            const body = JSON.stringify({ 
+
+            const body = JSON.stringify({
                 rfc: document.getElementById('edit-rfc').value,
                 nombre: document.getElementById('edit-nombre').value,
                 total: parseFloat(document.getElementById('edit-total').value),
@@ -599,12 +1097,21 @@
                 subcatalogo: centros[0].subcatalogo,
                 porcentaje_centro: porcentajeStr,
                 fecha_pago: document.getElementById('edit-fecha').value,
-                moneda: document.getElementById('edit-moneda').value
+                moneda: document.getElementById('edit-moneda').value,
+                comentarios: document.getElementById('edit-comentarios').value,
+                ...refaccionesData
             });
             
-            await fetch(`/api/documentos/${id}`, { method: 'PUT', headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' }, body });
-            document.getElementById('edit-modal').classList.add('hidden');
-            fetchData();
+            showLoader();
+            const res = await fetch(`/api/documentos/${id}`, { method: 'PUT', headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' }, body });
+            hideLoader();
+            if(res.ok) {
+                showToast("✅ Cambios guardados con éxito");
+                document.getElementById('edit-modal').classList.add('hidden');
+                fetchData();
+            } else {
+                showToast("❌ Error al guardar los cambios", true);
+            }
         }
 
         async function uploadPDF(id, type='factura') {
@@ -612,16 +1119,81 @@
             input.onchange = async e => {
                 const fd = new FormData(); fd.append("file", e.target.files[0]);
                 const endpoint = type === 'factura' ? `/api/subir-pdf/${id}` : `/api/subir-comprobante-pago/${id}`;
-                await fetch(endpoint, { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` }, body: fd });
-                fetchData();
+                showLoader();
+                const res = await fetch(endpoint, { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` }, body: fd });
+                hideLoader();
+                if (res.ok) {
+                    showToast("✅ Documento subido con éxito");
+                    fetchData();
+                } else {
+                    showToast("❌ Error al subir el documento", true);
+                }
+            };
+            input.click();
+        }
+
+        async function uploadOtrosDocumentos(id) {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.pdf,.doc,.docx,.jpg,.jpeg,.png'; // Acepta más formatos
+            input.onchange = async e => {
+                const fd = new FormData(); 
+                fd.append("file", e.target.files[0]);
+                showLoader();
+                const res = await fetch(`/api/subir-otros-documentos/${id}`, { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` }, body: fd });
+                hideLoader();
+                if (res.ok) {
+                    showToast("✅ 'Otro documento' subido con éxito");
+                    fetchData();
+                } else {
+                    showToast("❌ Error al subir el documento", true);
+                }
             };
             input.click();
         }
 
         async function cambiarEstado(id, direccion) {
-            const endpoint = direccion === 'siguiente' ? `/api/avanzar-estado/${id}` : `/api/retroceder-estado/${id}`;
-            await fetch(endpoint, { method: 'PUT', headers: { 'Authorization': `Bearer ${authToken}` } });
-            fetchData();
+            let body = null;
+            let endpoint;
+            let successMessage = "";
+
+            if (direccion === 'avanzar') {
+                endpoint = `/api/avanzar-estado/${id}`;
+                successMessage = "✅ Estado avanzado";
+            } else if (direccion === 'retroceder') {
+                endpoint = `/api/retroceder-estado/${id}`;
+                successMessage = "✅ Estado revertido";
+            } else if (direccion === 'rechazar') {
+                const motivo = prompt("Indique el motivo del rechazo:");
+                if (motivo === null) return;
+                if (motivo.trim() === "") return showToast("Es obligatorio indicar un motivo", true);
+                body = JSON.stringify({ motivo: motivo });
+                endpoint = `/api/rechazar-registro/${id}`;
+                successMessage = "✅ Registro rechazado";
+            } else if (direccion === 'corregir') {
+                endpoint = `/api/enviar-correccion/${id}`;
+                successMessage = "✅ Corrección enviada";
+            }
+
+            if (!endpoint) return;
+
+            showLoader();
+            const res = await fetch(endpoint, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${authToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: body
+            });
+            hideLoader();
+            
+            if(res.ok) {
+                showToast(successMessage);
+                fetchData();
+            } else {
+                showToast("❌ No se pudo cambiar el estado", true);
+            }
         }
 
         async function resetDB() {
@@ -636,9 +1208,13 @@
 
         async function fetchData() {
             const res = await fetch('/api/ver-datos', { headers: { 'Authorization': `Bearer ${authToken}` } });
-            if (!res.ok) return logout();
+            if (!res.ok) {
+                showToast("Sesión expirada, por favor inicia sesión de nuevo.", true);
+                return logout();
+            }
             const data = await res.json();
             globalData = data.registros; 
+            updateKPIs(data.kpis);
             applyFilters(); 
         }
 
@@ -675,25 +1251,46 @@
             renderTable(filtrados);
         }
 
+        function updateKPIs(kpis) {
+            if (!kpis) return;
+            document.getElementById('kpi-pagado').textContent = "$" + (kpis.total_pagado_mes || 0).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('kpi-en-proceso').textContent = "$" + (kpis.total_en_proceso || 0).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('kpi-rechazado').textContent = "$" + (kpis.total_rechazado || 0).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('kpi-pendiente').textContent = "$" + (kpis.total_pendiente || 0).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        }
+
         function renderTable(dataArray) {
-            const tbody = document.getElementById("data-table"); 
+            const tableContainer = document.getElementById("table-container");
+            const emptyState = document.getElementById("empty-state");
+
+            if(dataArray.length === 0) {
+                tableContainer.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+            } else {
+                tableContainer.classList.remove('hidden');
+                emptyState.classList.add('hidden');
+            }
+
+            const tbody = document.getElementById("data-table");
             tbody.innerHTML = "";
             let sumaFinal = 0;
             
             dataArray.forEach(row => {
                 sumaFinal += row.total; 
 
-                let colorOrigen = row.tipo === 'XML' ? 'bg-green-100 text-green-800 border-green-200' : 
-                                  row.tipo === 'EXCEL' ? 'bg-blue-100 text-blue-800 border-blue-200' : 
+                let colorOrigen = row.tipo === 'XML' ? 'bg-green-100 text-green-800 border-green-200' :
+                                  row.tipo === 'EXCEL' ? 'bg-blue-100 text-blue-800 border-blue-200' :
                                   row.tipo === 'CORREO' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' : 'bg-gray-200 text-gray-800 border-gray-300';
-                
-                let facBadge = row.comprobante_pdf 
-                    ? `<a href="/api/descargar-pdf/${row.id}" target="_blank" class="bg-gray-800 text-white px-2 py-1.5 rounded text-xs hover:bg-black mb-1.5 block w-full text-center shadow-sm transition"><i class="fas fa-file-pdf text-red-500 mr-1"></i> Ver Fac.</a>` 
-                    : `<button onclick="uploadPDF(${row.id}, 'factura')" class="bg-blue-100 hover:bg-blue-200 text-blue-800 px-2 py-1.5 rounded text-[10px] font-bold block mb-1.5 w-full text-center shadow-sm transition"><i class="fas fa-upload mr-1"></i> Subir Fac.</button>`;
+
+                let facBadge = row.comprobante_pdf
+                    ? `<a href="/api/descargar-pdf/${row.id}" target="_blank" class="bg-gray-800 text-white px-2 py-1.5 rounded text-xs hover:bg-black mb-1.5 block w-full text-center shadow-sm transition"><i class="fas fa-file-pdf text-red-500 mr-1"></i> Ver Fac.</a>`                     : `<button onclick="uploadPDF(${row.id}, 'factura')" class="bg-blue-100 hover:bg-blue-200 text-blue-800 px-2 py-1.5 rounded text-[10px] font-bold block mb-1.5 w-full text-center shadow-sm transition"><i class="fas fa-upload mr-1"></i> Subir Fac.</button>`;
 
                 let compBadge = row.comprobante_pago_pdf
                     ? `<a href="/api/descargar-comprobante-pago/${row.id}" target="_blank" class="bg-green-600 text-white px-2 py-1.5 rounded text-xs hover:bg-green-700 block w-full text-center shadow-sm transition"><i class="fas fa-receipt mr-1"></i> Ver Pago</a>`
-                    : (userRole === 'admin' ? `<button onclick="uploadPDF(${row.id}, 'pago')" class="bg-green-100 hover:bg-green-200 text-green-800 px-2 py-1.5 rounded text-[10px] font-bold block w-full text-center shadow-sm transition"><i class="fas fa-upload mr-1"></i> Subir Pago</button>` : '');
+                    : '';
+
+                let otrosBadge = row.otros_documentos_pdf
+                    ? `<a href="/api/descargar-otros-documentos/${row.id}" target="_blank" class="bg-green-600 text-white px-2 py-1.5 rounded text-xs hover:bg-green-700 block w-full text-center shadow-sm transition mt-1.5"><i class="fas fa-paperclip mr-1"></i> Ver Otros</a>`                     : `<button onclick="uploadOtrosDocumentos(${row.id})" class="bg-green-100 hover:bg-green-200 text-green-800 px-2 py-1.5 rounded text-[10px] font-bold block mt-1.5 w-full text-center shadow-sm transition"><i class="fas fa-upload mr-1"></i> Subir Otros</button>`;
 
                 // SEMÁFORO DE ESTADOS (círculos más pequeños)
                 let semaforoHTML = '';
@@ -701,84 +1298,147 @@
                 
                 if (row.estado_pago === 'Pendiente') {
                     semaforoHTML = `
-                        <div class="flex items-center justify-center space-x-1 mb-2">
-                            <div class="w-5 h-5 rounded-full bg-red-500 shadow-lg border-2 border-red-700"></div>
-                            <div class="w-5 h-5 rounded-full bg-gray-300"></div>
-                            <div class="w-5 h-5 rounded-full bg-gray-300"></div>
+                        <div class="flex items-center justify-center space-x-1 mb-1">
+                            <div class="w-3 h-3 rounded-full bg-red-500 shadow border border-red-700"></div>
+                            <div class="w-3 h-3 rounded-full bg-gray-200"></div>
+                            <div class="w-3 h-3 rounded-full bg-gray-200"></div>
                         </div>
-                        <span class="text-xs font-bold text-red-700 block text-center"><i class="fas fa-clock"></i> Pendiente</span>`;
-                    botonesAdmin = (userRole === 'admin' || userRole === 'supervisor')
-                        ? `<button onclick="cambiarEstado(${row.id}, 'siguiente')" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1.5 rounded text-[10px] font-bold uppercase shadow-sm w-full transition"><i class="fas fa-arrow-right mr-1"></i> Autorizar</button>` 
-                        : '';
-                } else if (row.estado_pago === 'Autorizado') {
-                    semaforoHTML = `
-                        <div class="flex items-center justify-center space-x-1 mb-2">
-                            <div class="w-5 h-5 rounded-full bg-gray-300"></div>
-                            <div class="w-5 h-5 rounded-full bg-yellow-400 shadow-lg border-2 border-yellow-600"></div>
-                            <div class="w-5 h-5 rounded-full bg-gray-300"></div>
-                        </div>
-                        <span class="text-xs font-bold text-yellow-600 block text-center"><i class="fas fa-check-circle"></i> Autorizado</span>`;
-                    // Supervisores solo pueden revocar, NO pagar
-                    if (userRole === 'admin') {
-                        botonesAdmin = `<div class="mt-2 grid grid-cols-2 gap-1">
-                            <button onclick="cambiarEstado(${row.id}, 'anterior')" class="bg-red-500 hover:bg-red-600 text-white px-1 py-1 rounded text-[9px] font-bold shadow-sm transition"><i class="fas fa-arrow-left"></i> Revocar</button>
-                            <button onclick="cambiarEstado(${row.id}, 'siguiente')" class="bg-green-500 hover:bg-green-600 text-white px-1 py-1 rounded text-[9px] font-bold shadow-sm transition"><i class="fas fa-arrow-right"></i> Pagar</button>
-                           </div>`;
-                    } else if (userRole === 'supervisor') {
-                        botonesAdmin = `<button onclick="cambiarEstado(${row.id}, 'anterior')" class="mt-2 bg-red-500 hover:bg-red-600 text-white px-2 py-1.5 rounded text-[10px] font-bold uppercase shadow-sm w-full transition"><i class="fas fa-arrow-left mr-1"></i> Revocar</button>`;
+                        <span class="text-[10px] font-bold text-red-700 block text-center uppercase">Pendiente</span>`;
+                    
+                    const esPropio = row.subido_por === localStorage.getItem("token");
+                    
+                    if (userRole === 'admin' || (userRole === 'supervisor' && !esPropio)) {
+                        botonesAdmin = `
+                            <div class="mt-2 flex justify-center gap-2">
+                                <button onclick="cambiarEstado(${row.id}, 'rechazar')" class="bg-red-500 hover:bg-red-600 text-white p-2 rounded shadow transition" title="Rechazar"><i class="fas fa-times"></i></button>
+                                <button onclick="cambiarEstado(${row.id}, 'avanzar')" class="bg-green-500 hover:bg-green-600 text-white p-2 rounded shadow transition" title="Autorizar"><i class="fas fa-check"></i></button>
+                            </div>`;
+                    } else if (userRole === 'supervisor' && esPropio) {
+                        botonesAdmin = `<span class="text-[8px] text-gray-400 italic block mt-1 text-center">Esperando revisión Admin</span>`;
                     } else {
                         botonesAdmin = '';
                     }
+                } else if (row.estado_pago === 'Autorizado') {
+                    semaforoHTML = `
+                        <div class="flex items-center justify-center space-x-1 mb-1">
+                            <div class="w-3 h-3 rounded-full bg-gray-200"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-400 shadow border border-yellow-600"></div>
+                            <div class="w-3 h-3 rounded-full bg-gray-200"></div>
+                        </div>
+                        <span class="text-[10px] font-bold text-yellow-600 block text-center uppercase">Autorizado</span>`;
+                    
+                    if (userRole === 'admin') {
+                        botonesAdmin = `
+                            <div class="mt-2 flex justify-center gap-2">
+                                <button onclick="cambiarEstado(${row.id}, 'retroceder')" class="bg-yellow-500 hover:bg-yellow-600 text-white p-2 rounded shadow transition" title="Revertir a Pendiente"><i class="fas fa-undo"></i></button>
+                                <button onclick="cambiarEstado(${row.id}, 'avanzar')" class="bg-green-500 hover:bg-green-600 text-white p-2 rounded shadow transition" title="Marcar como Pagado"><i class="fas fa-dollar-sign"></i></button>
+                            </div>`;
+                    } else if (userRole === 'supervisor') {
+                        botonesAdmin = `<button onclick="cambiarEstado(${row.id}, 'retroceder')" class="mt-2 bg-yellow-500 hover:bg-yellow-600 text-white p-2 rounded shadow w-full transition" title="Revertir a Pendiente"><i class="fas fa-undo"></i></button>`;
+                    } else {
+                        botonesAdmin = '';
+                    }
+                } else if (row.estado_pago === 'Rechazado') {
+                    semaforoHTML = `
+                        <div class="flex items-center justify-center space-x-1 mb-1">
+                            <div class="w-3 h-3 rounded-full bg-red-600 border border-red-800"></div>
+                            <div class="w-3 h-3 rounded-full bg-gray-200"></div>
+                            <div class="w-3 h-3 rounded-full bg-gray-200"></div>
+                        </div>
+                        <span class="text-[10px] font-bold text-red-800 block text-center uppercase">Rechazado</span>`;
+                    
+                    const esPropio = row.subido_por === localStorage.getItem("token");
+                    const esRevisor = userRole === 'admin' || (userRole === 'supervisor' && !esPropio);
+                    if (esPropio) {
+                        botonesAdmin = `<button onclick="cambiarEstado(${row.id}, 'corregir')" class="mt-2 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded shadow w-full transition" title="Enviar Corrección"><i class="fas fa-paper-plane"></i></button>`;
+                    } else if (esRevisor) {
+                        botonesAdmin = `<button onclick="cambiarEstado(${row.id}, 'retroceder')" class="mt-2 bg-yellow-500 hover:bg-yellow-600 text-white p-2 rounded shadow w-full transition" title="Revertir a Pendiente"><i class="fas fa-undo"></i></button>`;
+                    } else {
+                        botonesAdmin = `<button class="mt-2 bg-gray-400 text-white p-2 rounded shadow w-full cursor-default" title="Rechazado"><i class="fas fa-file-excel"></i></button>`;
+                    }
                 } else if (row.estado_pago === 'Pagado') {
                     semaforoHTML = `
-                        <div class="flex items-center justify-center space-x-1 mb-2">
-                            <div class="w-5 h-5 rounded-full bg-gray-300"></div>
-                            <div class="w-5 h-5 rounded-full bg-gray-300"></div>
-                            <div class="w-5 h-5 rounded-full bg-green-500 shadow-lg border-2 border-green-700"></div>
+                        <div class="flex items-center justify-center space-x-1 mb-1">
+                            <div class="w-3 h-3 rounded-full bg-gray-200"></div>
+                            <div class="w-3 h-3 rounded-full bg-gray-200"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500 shadow border border-green-700"></div>
                         </div>
-                        <span class="text-xs font-bold text-green-700 block text-center"><i class="fas fa-check-double"></i> Pagado</span>`;
+                        <span class="text-[10px] font-bold text-green-700 block text-center uppercase">Pagado</span>`;
                     botonesAdmin = userRole === 'admin'
-                        ? `<button onclick="cambiarEstado(${row.id}, 'anterior')" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1.5 rounded text-[10px] font-bold uppercase shadow-sm w-full transition"><i class="fas fa-arrow-left mr-1"></i> Revertir</button>` 
+                        ? `<button onclick="cambiarEstado(${row.id}, 'retroceder')" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white p-2 rounded shadow w-full transition" title="Revertir a Autorizado"><i class="fas fa-undo"></i></button>` 
                         : '';
                 }
                 
                 let badgeEstado = semaforoHTML;
                 let btnPagoAdmin = botonesAdmin;
 
+                let historialHTML = `<div class="max-h-24 overflow-y-auto text-[9px] text-gray-500 bg-gray-50 p-1 rounded border">`;
+                if (row.historial && row.historial.length > 0) {
+                    row.historial.forEach(h => {
+                        historialHTML += `<div class="mb-1 border-b border-gray-100 last:border-0 pb-1">
+                            <span class="font-bold text-gray-700">${h.accion}</span> por <span class="font-semibold text-blue-600">${h.usuario}</span><br>
+                            <span class="text-gray-400 italic">${h.fecha}</span>
+                            ${h.motivo ? `<br><span class="text-red-500 font-medium">Motivo: ${h.motivo}</span>` : ''}
+                        </div>`;
+                    });
+                } else {
+                    historialHTML += `<span>Sin historial</span>`;
+                }
+                historialHTML += `</div>`;
+
                 tbody.innerHTML += `
-                    <tr class="border-b border-gray-200 hover:bg-gray-50 transition">
+                    <tr id="row-${row.id}" class="border-b border-gray-200 hover:bg-gray-50 transition">
                         <td class="p-3 text-center align-middle">
-                            <span class="text-gray-400 font-bold text-xs">#${row.id}</span><br>
+                            <input type="checkbox" class="row-checkbox" value="${row.id}" onclick="updateBulkControls()">
+                        </td>
+                        <td class="p-3 text-center align-middle">
+                            <div class="text-[10px] text-gray-400 uppercase font-bold">${row.subido_por}</div>
+                            <span class="text-gray-500 font-bold text-xs">#${row.id}</span><br>
                             <span class="px-2 py-0.5 rounded text-[10px] font-bold ${colorOrigen} border mt-1 inline-block">${row.tipo}</span>
                         </td>
                         <td class="p-3">
-                            <div class="font-bold text-base leading-tight text-black truncate max-w-xs" title="${row.nombre}">${row.nombre}</div>
-                            <div class="font-mono text-xs text-gray-500 mt-1" title="RFC"><i class="fas fa-building w-4"></i> ${row.remitente_rfc}</div>
-                            <div class="font-mono text-[10px] text-blue-600 mt-0.5 font-bold truncate max-w-xs" title="UUID/Folio"><i class="fas fa-hashtag w-4"></i> ${row.uuid_folio}</div>
-                            ${row.moneda && row.moneda !== 'MXN' ? `<div class="text-[10px] text-purple-600 font-bold mt-0.5"><i class="fas fa-coins w-4"></i> ${row.moneda}</div>` : ''}
-                            ${row.uso_cfdi ? `<div class="text-[9px] text-gray-400 mt-0.5 truncate max-w-xs" title="Uso CFDI: ${row.uso_cfdi}">Uso: ${row.uso_cfdi}</div>` : ''}
-                            ${row.forma_pago ? `<div class="text-[9px] text-gray-400 truncate max-w-xs" title="Forma Pago: ${row.forma_pago}">F.Pago: ${row.forma_pago}</div>` : ''}
-                            ${row.metodo_pago ? `<div class="text-[9px] text-gray-400 truncate max-w-xs" title="Método Pago: ${row.metodo_pago}">M.Pago: ${row.metodo_pago}</div>` : ''}
-                            ${row.clave_sat ? `<div class="text-[9px] text-gray-400 truncate max-w-xs" title="Clave SAT: ${row.clave_sat}">SAT: ${row.clave_sat}</div>` : ''}
-                            ${row.descripcion_concepto ? `<div class="text-[9px] text-blue-500 font-semibold mt-0.5 truncate max-w-xs" title="Descripción: ${row.descripcion_concepto}">Desc: ${row.descripcion_concepto}</div>` : ''}
+                            <div class="flex justify-between items-start">
+                                <!-- Columna Izquierda: Datos Principales -->
+                                <div class="pr-4">
+                                    <div class="font-bold text-base leading-tight text-black truncate max-w-xs" title="${row.nombre}">${row.nombre}</div>
+                                    <div class="font-mono text-xs text-gray-500 mt-1" title="RFC"><i class="fas fa-building w-4"></i> ${row.remitente_rfc}</div>
+                                    <div class="font-mono text-[10px] text-blue-600 mt-0.5 font-bold truncate max-w-xs" title="UUID/Folio"><i class="fas fa-hashtag w-4"></i> ${row.uuid_folio}</div>
+                                    ${row.moneda && row.moneda !== 'MXN' ? `<div class="text-[10px] text-purple-600 font-bold mt-0.5"><i class="fas fa-coins w-4"></i> ${row.moneda}</div>` : ''}
+                                    ${row.fecha_emision && row.fecha_emision !== 'POR DEFINIR' ? `<div class="text-[10px] text-orange-600 font-bold mt-0.5"><i class="far fa-calendar-check w-4"></i> Factura: ${row.fecha_emision}</div>` : ''}
+                                    ${row.descripcion_concepto ? `<div class="text-[9px] text-blue-500 font-semibold mt-0.5 truncate max-w-xs" title="Descripción: ${row.descripcion_concepto}"><i class="fas fa-info-circle w-4"></i> ${row.descripcion_concepto}</div>` : ''}
+                                </div>
+                                <!-- Columna Derecha: Datos Fiscales -->
+                                <div class="text-right flex-shrink-0">
+                                    ${row.uso_cfdi ? `<div class="text-[9px] text-gray-500" title="Uso CFDI: ${row.uso_cfdi}">Uso: ${row.uso_cfdi}</div>` : ''}
+                                    ${row.forma_pago ? `<div class="text-[9px] text-gray-500" title="Forma Pago: ${row.forma_pago}">F.Pago: ${row.forma_pago}</div>` : ''}
+                                    ${row.metodo_pago ? `<div class="text-[9px] text-gray-500" title="Método Pago: ${row.metodo_pago}">M.Pago: ${row.metodo_pago}</div>` : ''}
+                                    ${row.regimen_fiscal_emisor ? `<div class="text-[9px] text-gray-500 mt-0.5" title="Regimen: ${row.regimen_fiscal_emisor}">Reg: ${row.regimen_fiscal_emisor}</div>` : ''}
+                                    ${row.clave_sat ? `<div class="text-[9px] text-gray-500 mt-0.5" title="Clave SAT: ${row.clave_sat}">SAT: ${row.clave_sat}</div>` : ''}
+                                    ${row.traslados ? `<div class="text-[9px] text-green-600 mt-1 font-bold" title="Traslados: ${row.traslados}">${row.traslados}</div>` : ''}
+                                    ${row.retenciones ? `<div class="text-[9px] text-red-600 mt-0.5 font-bold" title="Retenciones: ${row.retenciones}">${row.retenciones}</div>` : ''}
+                                </div>
+                            </div>
                         </td>
                         <td class="p-3 font-black text-lg text-black text-right align-middle">
                             $${row.total.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                         </td>
-                        <td class="p-3 text-xs text-gray-700 align-middle">
-                            <div class="font-bold text-sm"><i class="fas fa-map-marker-alt text-gray-400 w-4"></i> ${row.centro_costo}</div>
-                            <div class="mt-1"><i class="far fa-calendar-alt text-gray-400 w-4"></i> ${row.fecha_pago}</div>
-                            <div class="text-[10px] text-gray-400 mt-1 uppercase font-bold"><i class="fas fa-user w-4"></i> ${row.subido_por}</div>
-                            ${row.fecha_registro ? `<div class="text-[9px] text-gray-400 mt-0.5"><i class="fas fa-clock w-4"></i> Cargado: ${new Date(row.fecha_registro).toLocaleDateString('es-MX')}</div>` : ''}
+                        <td class="p-3 text-[10px] text-gray-700 align-middle space-y-1">
+                            <div class="flex items-center" title="Centro"><i class="fas fa-map-marker-alt text-gray-400 w-4 text-center mr-1"></i><div>${row.centro_costo}</div></div>
+                            ${row.subcatalogo_centro ? `<div class="flex items-center" title="Subcatálogo"><i class="fas fa-tag text-gray-400 w-4 text-center mr-1"></i><div>${row.subcatalogo_centro}</div></div>` : ''}
+                            <div class="flex items-center text-[10px]" title="Fecha de Pago"><i class="far fa-calendar-alt text-gray-400 w-4 text-center mr-1"></i><div><span class="font-bold">F. Pago:</span> ${row.fecha_pago}</div></div>
                         </td>
-                        <td class="p-3 align-middle">
+                        <td class="p-1.5 align-middle">
                             ${badgeEstado}
                             ${btnPagoAdmin}
                         </td>
-                        <td class="p-3 align-middle">${facBadge}${compBadge}</td>
-                        <td class="p-3 text-center align-middle">
-                            <button onclick="openEdit(${row.id})" class="text-gray-400 hover:text-black text-lg mr-3 transition" title="Editar"><i class="fas fa-edit"></i></button>
-                            <button onclick="deleteDoc(${row.id})" class="text-gray-400 hover:text-red-600 text-lg transition" title="Eliminar"><i class="fas fa-trash-alt"></i></button>
+                        <td class="p-3 align-middle">${facBadge}${compBadge}${otrosBadge}</td>
+                        <td class="p-3 align-middle">
+                            <div class="flex justify-center items-center gap-4">
+                                <button onclick="openCommentsModal(${row.id})" class="text-gray-400 hover:text-gray-800 text-lg transition" title="Comentarios"><i class="fas fa-comment"></i></button>
+                                <button onclick="showHistory(${row.id})" class="text-gray-400 hover:text-blue-600 text-lg transition" title="Ver Historial"><i class="fas fa-history"></i></button>
+                                <button onclick="openEdit(${row.id})" class="text-gray-400 hover:text-black text-lg transition" title="Editar"><i class="fas fa-edit"></i></button>
+                                <button onclick="deleteDoc(${row.id})" class="text-gray-400 hover:text-red-600 text-lg transition" title="Eliminar"><i class="fas fa-trash-alt"></i></button>
+                            </div>
                         </td>
                     </tr>`;
             });
@@ -793,13 +1453,512 @@
             }
         }
 
-        async function downloadExcel() {
-            const res = await fetch('/api/descargar-excel', { headers: { 'Authorization': `Bearer ${authToken}` } });
+        function toggleSelectAll() {
+            const isChecked = document.getElementById('select-all').checked;
+            document.querySelectorAll('.row-checkbox').forEach(cb => {
+                // Solo seleccionar si es visible (por los filtros)
+                if (cb.closest('tr').style.display !== 'none') {
+                    cb.checked = isChecked;
+                }
+            });
+            updateBulkControls();
+        }
+
+        function toggleAllFields(value) {
+            document.querySelectorAll('.export-field').forEach(cb => cb.checked = value);
+        }
+
+        function downloadExcel() {
+            document.getElementById('export-modal').classList.remove('hidden');
+        }
+
+        async function executeExport() {
+            const selectedIds = Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => parseInt(cb.value));
+            const selectedFields = Array.from(document.querySelectorAll('.export-field:checked')).map(cb => cb.value);
+            
+            if (selectedFields.length === 0) return alert("Debes seleccionar al menos un campo para exportar");
+
+            const res = await fetch('/api/descargar-excel', { 
+                method: 'POST',
+                headers: { 
+                    'Authorization': `Bearer ${authToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    ids: selectedIds.length > 0 ? selectedIds : null,
+                    campos: selectedFields
+                })
+            });
+
             if (res.ok) {
                 const a = document.createElement('a'); a.href = window.URL.createObjectURL(await res.blob());
-                a.download = "DataHub_Ulma_Reporte.xlsx"; a.click();
+                a.download = selectedIds.length > 0 ? "DataHub_Seleccion.xlsx" : "DataHub_Completo.xlsx"; 
+                a.click();
+                document.getElementById('export-modal').classList.add('hidden');
+            } else {
+                alert("Error al generar el reporte");
             }
+        }
+
+        function updateBulkControls() {
+            const selected = document.querySelectorAll('.row-checkbox:checked');
+            const count = selected.length;
+            document.getElementById('selected-count').innerText = count;
+            
+            if (count > 0) {
+                document.getElementById('bulk-controls').classList.remove('hidden');
+                document.getElementById('btn-bulk-delete').classList.remove('hidden');
+            } else {
+                document.getElementById('bulk-controls').classList.add('hidden');
+                document.getElementById('btn-bulk-delete').classList.add('hidden');
+                document.getElementById('select-all').checked = false;
+            }
+        }
+
+        function openCommentsModal(id) {
+            const registro = globalData.find(r => r.id === id);
+            if (!registro) return;
+            document.getElementById('comment-id').value = id;
+            document.getElementById('comment-text').value = registro.comentarios || '';
+            document.getElementById('comments-modal').classList.remove('hidden');
+        }
+
+        async function saveComment() {
+            const id = document.getElementById('comment-id').value;
+            const comentarios = document.getElementById('comment-text').value;
+            const body = JSON.stringify({ comentarios });
+
+            showLoader();
+            const res = await fetch(`/api/documentos/${id}`, {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' },
+                body
+            });
+            hideLoader();
+
+            if (res.ok) {
+                showToast("✅ Comentario guardado");
+                document.getElementById('comments-modal').classList.add('hidden');
+                fetchData();
+            } else {
+                showToast("❌ Error al guardar el comentario", true);
+            }
+        }
+
+        // ========== FUNCIONES PARA EDICIÓN RÁPIDA DE LOGÍSTICA ==========
+        function agregarCentroLog() {
+            const container = document.getElementById('log-centros-container');
+            const id = logCentroCounter++;
+            const div = document.createElement('div');
+            div.id = `log-centro-${id}`;
+            div.className = 'flex gap-2 items-center bg-white p-2 rounded border border-gray-300';
+            div.innerHTML = `
+                <select onchange="updateSubcatalogoLog(${id})" class="w-32 border border-gray-300 p-1.5 rounded text-xs" id="log-centro-select-${id}">
+                    <option value="">Centro</option><option value="Administración">Administración</option><option value="Comercial">Comercial</option><option value="Servicio">Servicio</option>
+                </select>
+                <select class="w-32 border border-gray-300 p-1.5 rounded text-xs" id="log-subcatalogo-${id}"><option value="">Subcatálogo</option></select>
+                <input type="number" min="0" max="100" step="0.01" placeholder="%" onchange="calcularTotalLog()" class="w-16 border border-gray-300 p-1.5 rounded text-xs text-center" id="log-porcentaje-${id}">
+                <button type="button" onclick="eliminarCentroLog(${id})" class="text-red-500 hover:text-red-700 px-2"><i class="fas fa-times"></i></button>
+            `;
+            container.appendChild(div);
+            calcularTotalLog();
+        }
+
+        function updateSubcatalogoLog(id) {
+            const centro = document.getElementById(`log-centro-select-${id}`).value;
+            const subSelect = document.getElementById(`log-subcatalogo-${id}`);
+            subSelect.innerHTML = '<option value="">Subcatálogo</option>';
+            if (centro && subcatalogos[centro]) {
+                subcatalogos[centro].forEach(sub => { subSelect.innerHTML += `<option value="${sub}">${sub}</option>`; });
+            }
+        }
+
+        function eliminarCentroLog(id) {
+            document.getElementById(`log-centro-${id}`)?.remove();
+            calcularTotalLog();
+        }
+
+        function calcularTotalLog() {
+            let total = 0;
+            document.querySelectorAll('#log-centros-container input[type="number"]').forEach(input => { total += parseFloat(input.value) || 0; });
+            const totalSpan = document.getElementById('log-total-porcentaje');
+            totalSpan.textContent = `Total: ${total.toFixed(2)}%`;
+            totalSpan.className = total === 100 ? 'text-sm font-bold text-green-600' : 'text-sm font-bold text-red-600';
+            const addButton = document.getElementById('btn-agregar-centro-log');
+            addButton.classList.toggle('hidden', total >= 100);
+        }
+
+        function obtenerCentrosLog() {
+            const centros = [];
+            document.querySelectorAll('#log-centros-container [id^="log-centro-"]').forEach(div => {
+                const id = div.id.split('-')[2];
+                const centro = document.getElementById(`log-centro-select-${id}`).value;
+                const subcatalogo = document.getElementById(`log-subcatalogo-${id}`).value;
+                const porcentaje = parseFloat(document.getElementById(`log-porcentaje-${id}`).value) || 0;
+                if (centro && porcentaje > 0) centros.push({ centro, subcatalogo, porcentaje });
+            });
+            return centros;
+        }
+
+        function openLogisticsModal(id) {
+            const registro = globalData.find(r => r.id === id);
+            if (!registro) return;
+            
+            document.getElementById('log-id').value = id;
+            document.getElementById('log-fecha').value = registro.fecha_pago !== 'POR DEFINIR' ? registro.fecha_pago : '';
+
+            logCentroCounter = 0;
+            const container = document.getElementById('log-centros-container');
+            container.innerHTML = '';
+            const porcentajeStr = registro.porcentaje_centro || '100%';
+
+            if (porcentajeStr === '100%') {
+                agregarCentroLog();
+                document.getElementById(`log-centro-select-0`).value = registro.centro_costo || '';
+                updateSubcatalogoLog(0);
+                document.getElementById(`log-subcatalogo-0`).value = registro.subcatalogo_centro || '';
+                document.getElementById(`log-porcentaje-0`).value = 100;
+            } else {
+                porcentajeStr.split(',').forEach(parte => {
+                    const match = parte.match(/([^:]+):(\d+(?:\.\d+)?)%/); // CORRECT REGEX
+                    if (match) {
+                        agregarCentroLog();
+                        const idx = logCentroCounter - 1;
+                        document.getElementById(`log-centro-select-${idx}`).value = match[1];
+                        updateSubcatalogoLog(idx);
+                        document.getElementById(`log-porcentaje-${idx}`).value = parseFloat(match[2]);
+                    }
+                });
+            }
+            calcularTotalLog();
+            document.getElementById('logistics-modal').classList.remove('hidden');
+        }
+
+        async function saveLogistics() {
+            const id = document.getElementById('log-id').value;
+            const centros = obtenerCentrosLog();
+            if (centros.length === 0) return showToast('Debes agregar al menos un centro de costo', true);
+            const totalPorcentaje = centros.reduce((sum, c) => sum + c.porcentaje, 0);
+            if (Math.abs(totalPorcentaje - 100) > 0.01) return showToast('Los porcentajes deben sumar 100%', true);
+
+            const porcentajeStr = centros.length === 1 && centros[0].porcentaje === 100 ? '100%' : centros.map(c => `${c.centro}:${c.porcentaje}%`).join(',');
+
+            const body = JSON.stringify({
+                centro_costo: centros[0].centro,
+                subcatalogo: centros[0].subcatalogo,
+                porcentaje_centro: porcentajeStr,
+                fecha_pago: document.getElementById('log-fecha').value
+            });
+
+            showLoader();
+            const res = await fetch(`/api/documentos/${id}`, { method: 'PUT', headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' }, body });
+            hideLoader();
+
+            if(res.ok) {
+                showToast("✅ Logística guardada con éxito");
+                document.getElementById('logistics-modal').classList.add('hidden');
+                fetchData();
+            } else {
+                showToast("❌ Error al guardar la logística", true);
+            }
+        }
+
+        async function bulkDelete() {
+            const selectedIds = Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => parseInt(cb.value));
+            if (selectedIds.length === 0) return;
+            
+            if (confirm(`¿Estás seguro de que quieres eliminar ${selectedIds.length} registros?\n\nSolo se eliminarán aquellos sobre los que tengas permiso (tus propios pendientes/rechazados o subordinados en pendiente).`)) {
+                showLoader();
+                const res = await fetch('/api/documentos/bulk-delete', {
+                    method: 'POST',
+                    headers: { 
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ ids: selectedIds })
+                });
+                hideLoader();
+
+                if (res.ok) {
+                    const data = await res.json();
+                    showToast(`✅ Se eliminaron ${data.deleted} registros exitosamente.`);
+                    fetchData();
+                } else {
+                    showToast('❌ Error al eliminar los registros.', true);
+                }
+            }
+        }
+
+        function showHistory(id) {
+            const registro = globalData.find(r => r.id === id);
+            if (!registro || !registro.historial) return;
+
+            const modal = document.getElementById('history-modal');
+            const content = document.getElementById('history-content');
+            content.innerHTML = ''; // Limpiar contenido anterior
+
+            if (registro.historial.length > 0) {
+                registro.historial.forEach(h => {
+                    const div = document.createElement('div');
+                    div.className = 'text-sm p-2 border-b border-gray-200 last:border-0';
+                    div.innerHTML = `
+                        <div class="font-bold text-gray-800">${h.accion}</div>
+                        <div class="text-xs text-gray-500">Por: <span class="font-semibold text-blue-600">${h.usuario}</span></div>
+                        <div class="text-xs text-gray-400">Fecha: ${h.fecha}</div>
+                        ${h.motivo ? `<div class="text-xs text-red-600 mt-1">Motivo: <span class="italic">${h.motivo}</span></div>` : ''}
+                    `;
+                    content.appendChild(div);
+                });
+            } else {
+                content.innerHTML = '<p class="text-sm text-gray-500">No hay historial para este registro.</p>';
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        // =========================================================
+        // Funciones para la Vista de Proveedores
+        // =========================================================
+
+        let providersData = []; // Para almacenar los datos de los proveedores
+
+        function showProvidersView() {
+            document.getElementById('main-content-view').classList.add('hidden');
+            document.getElementById('providers-content-view').classList.remove('hidden');
+            document.getElementById('indicators-content-view').classList.add('hidden'); // NEW
+
+            document.getElementById('tab-providers').classList.remove('bg-gray-700', 'text-gray-300', 'hover:bg-gray-600', 'hover:text-white');
+            document.getElementById('tab-providers').classList.add('bg-white', 'text-black');
+
+            document.getElementById('tab-main').classList.remove('bg-white', 'text-black');
+            document.getElementById('tab-main').classList.add('bg-gray-700', 'text-gray-300', 'hover:bg-gray-600', 'hover:text-white');
+
+            document.getElementById('tab-indicators').classList.remove('bg-white', 'text-black'); // NEW
+            document.getElementById('tab-indicators').classList.add('bg-gray-700', 'text-gray-300', 'hover:bg-gray-600', 'hover:text-white'); // NEW
+
+            fetchProviders();
+        }
+
+        async function fetchProviders() {
+            showLoader();
+            const res = await fetch('/api/providers/', { headers: { 'Authorization': `Bearer ${authToken}` } });
+            hideLoader();
+            if (res.ok) {
+                providersData = await res.json();
+                renderProvidersTable(providersData);
+            } else {
+                showToast("❌ Error al cargar proveedores", true);
+            }
+        }
+
+        function renderProvidersTable(dataArray) {
+            const tbody = document.getElementById("providers-table");
+            tbody.innerHTML = '';
+            if (dataArray.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500">No hay proveedores registrados.</td></tr>`;
+                return;
+            }
+
+            dataArray.forEach(provider => {
+                const row = document.createElement('tr');
+                row.className = 'border-b border-gray-200 hover:bg-gray-50 transition';
+                row.innerHTML = `
+                    <td class="p-3">
+                        <div class="font-bold text-base">${provider.nombre_proveedor}</div>
+                        <div class="text-xs text-gray-500">RFC: ${provider.rfc_proveedor}</div>
+                    </td>
+                    <td class="p-3">
+                        <div class="text-xs"><span class="font-bold">Banco:</span> ${provider.banco || 'N/A'}</div>
+                        <div class="text-xs"><span class="font-bold">Cuenta/CLABE:</span> ${provider.numero_cuenta_clabe || 'N/A'}</div>
+                        <div class="text-xs"><span class="font-bold">Tipo Op:</span> ${provider.tipo_operacion || 'N/A'}</div>
+                        ${renderValidationButton(provider.id, 'bancaria', provider.validacion_bancaria, userRole === 'admin' || userRole === 'supervisor')}
+                    </td>
+                    <td class="p-3">
+                        <textarea readonly class="w-full text-xs border-0 bg-transparent resize-none focus:outline-none" rows="2">${provider.expediente || 'Sin datos'}</textarea>
+                        ${renderValidationButton(provider.id, 'expediente', provider.validacion_expediente, userRole === 'admin' || userRole === 'supervisor')}
+                    </td>
+                    <td class="p-3 text-xs text-gray-600 italic break-words max-w-[150px]">${provider.campo_libre || 'Sin comentarios'}</td>
+                    <td class="p-3 text-center align-middle">
+                        <div class="flex justify-center items-center gap-4">
+                            <button onclick="openEditProviderModal(${provider.id})" class="text-gray-400 hover:text-black text-lg transition" title="Editar Proveedor"><i class="fas fa-edit"></i></button>
+                            <button onclick="deleteProvider(${provider.id})" class="text-gray-400 hover:text-red-600 text-lg transition ${userRole === 'admin' ? '' : 'hidden'}" title="Eliminar Proveedor"><i class="fas fa-trash-alt"></i></button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function renderValidationButton(providerId, field, isValid, canEdit) {
+            const icon = isValid ? 'fa-circle-check text-green-500' : 'fa-circle-xmark text-red-500';
+            const title = isValid ? 'Validado' : 'Pendiente de Validar';
+            if (!canEdit) {
+                return `<div class="text-center text-lg mt-1" title="${title}"><i class="fas ${icon}"></i></div>`;
+            }
+            return `
+                <button onclick="toggleProviderValidation(${providerId}, '${field}', ${isValid})"
+                        class="block w-full text-center text-lg mt-1 transition" title="${title}. Clic para cambiar">
+                    <i class="fas ${icon} hover:opacity-75"></i>
+                </button>
+            `;
+        }
+
+        async function toggleProviderValidation(providerId, field, currentStatus) {
+            showLoader();
+            const payload = {};
+            payload[`validacion_${field}`] = !currentStatus;
+            const res = await fetch(`/api/providers/${providerId}`, {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            hideLoader();
+            if (res.ok) {
+                showToast(`✅ Validación de ${field} actualizada`);
+                fetchProviders();
+            } else {
+                showToast(`❌ Error al actualizar validación de ${field}`, true);
+            }
+        }
+
+        // Modales y funciones CRUD para Proveedores
+        function openCreateProviderModal() {
+            document.getElementById('create-provider-nombre').value = '';
+            document.getElementById('create-provider-rfc').value = '';
+            document.getElementById('create-provider-banco').value = '';
+            document.getElementById('create-provider-cuenta').value = '';
+            document.getElementById('create-provider-tipo-operacion').value = '';
+            document.getElementById('create-provider-expediente').value = '';
+            document.getElementById('create-provider-campo-libre').value = '';
+            document.getElementById('create-provider-modal').classList.remove('hidden');
+        }
+
+        async function saveNewProvider() {
+            const nombre_proveedor = document.getElementById('create-provider-nombre').value;
+            const rfc_proveedor = document.getElementById('create-provider-rfc').value;
+            const banco = document.getElementById('create-provider-banco').value;
+            const numero_cuenta_clabe = document.getElementById('create-provider-cuenta').value;
+            const tipo_operacion = document.getElementById('create-provider-tipo-operacion').value;
+            const expediente = document.getElementById('create-provider-expediente').value;
+            const campo_libre = document.getElementById('create-provider-campo-libre').value;
+
+            if (!nombre_proveedor || !rfc_proveedor) {
+                return showToast("El nombre y RFC del proveedor son obligatorios.", true);
+            }
+            showLoader();
+            const res = await fetch('/api/providers/', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nombre_proveedor, rfc_proveedor, banco, numero_cuenta_clabe, tipo_operacion, expediente, campo_libre })
+            });
+            hideLoader();
+            if (res.ok) {
+                showToast("✅ Proveedor creado con éxito");
+                document.getElementById('create-provider-modal').classList.add('hidden');
+                fetchProviders();
+            } else {
+                showToast("❌ Error al crear proveedor. El RFC ya podría existir.", true);
+            }
+        }
+
+        let currentEditingProviderId = null;
+
+        async function openEditProviderModal(providerId) {
+            const provider = providersData.find(p => p.id === providerId);
+            if (!provider) return showToast("Proveedor no encontrado", true);
+
+            currentEditingProviderId = providerId;
+            document.getElementById('edit-provider-nombre').value = provider.nombre_proveedor;
+            document.getElementById('edit-provider-rfc').value = provider.rfc_proveedor; // RFC is immutable
+            document.getElementById('edit-provider-banco').value = provider.banco;
+            document.getElementById('edit-provider-cuenta').value = provider.numero_cuenta_clabe;
+            document.getElementById('edit-provider-tipo-operacion').value = provider.tipo_operacion;
+            document.getElementById('edit-provider-expediente').value = provider.expediente;
+            document.getElementById('edit-provider-campo-libre').value = provider.campo_libre;
+
+            // Hide validation toggles if not admin/supervisor
+            const validationControls = document.getElementById('edit-provider-validation-controls');
+            if (userRole === 'admin' || userRole === 'supervisor') {
+                validationControls.classList.remove('hidden');
+                document.getElementById('edit-provider-bancaria-status').innerHTML = renderValidationIcon(provider.validacion_bancaria);
+                document.getElementById('edit-provider-expediente-status').innerHTML = renderValidationIcon(provider.validacion_expediente);
+            } else {
+                validationControls.classList.add('hidden');
+            }
+
+            document.getElementById('edit-provider-modal').classList.remove('hidden');
+        }
+
+        function renderValidationIcon(isValid) {
+            const icon = isValid ? 'fa-circle-check text-green-500' : 'fa-circle-xmark text-red-500';
+            return `<i class="fas ${icon}"></i>`;
+        }
+
+        async function saveEditedProvider() {
+            if (!currentEditingProviderId) return;
+
+            const nombre_proveedor = document.getElementById('edit-provider-nombre').value;
+            const banco = document.getElementById('edit-provider-banco').value;
+            const numero_cuenta_clabe = document.getElementById('edit-provider-cuenta').value;
+            const tipo_operacion = document.getElementById('edit-provider-tipo-operacion').value;
+            const expediente = document.getElementById('edit-provider-expediente').value;
+            const campo_libre = document.getElementById('edit-provider-campo-libre').value;
+
+            const payload = { nombre_proveedor, banco, numero_cuenta_clabe, tipo_operacion, expediente, campo_libre };
+
+            showLoader();
+            const res = await fetch(`/api/providers/${currentEditingProviderId}`, {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            hideLoader();
+            if (res.ok) {
+                showToast("✅ Proveedor actualizado con éxito");
+                document.getElementById('edit-provider-modal').classList.add('hidden');
+                fetchProviders();
+            } else {
+                showToast("❌ Error al actualizar proveedor", true);
+            }
+        }
+
+        async function deleteProvider(providerId) {
+            if (!confirm("¿Estás seguro de que quieres eliminar este proveedor?")) return;
+            showLoader();
+            const res = await fetch(`/api/providers/${providerId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+            hideLoader();
+            if (res.ok) {
+                showToast("🗑️ Proveedor eliminado");
+                fetchProviders();
+            } else {
+                showToast("❌ Error al eliminar proveedor", true);
+            }
+        }
+
+        // =========================================================
+        // Funciones para la Vista de Indicadores (NUEVO)
+        // =========================================================
+        function showIndicatorsView() {
+            document.getElementById('main-content-view').classList.add('hidden');
+            document.getElementById('providers-content-view').classList.add('hidden');
+            document.getElementById('indicators-content-view').classList.remove('hidden');
+
+            document.getElementById('tab-indicators').classList.remove('bg-gray-700', 'text-gray-300', 'hover:bg-gray-600', 'hover:text-white');
+            document.getElementById('tab-indicators').classList.add('bg-white', 'text-black');
+
+            document.getElementById('tab-main').classList.remove('bg-white', 'text-black');
+            document.getElementById('tab-main').classList.add('bg-gray-700', 'text-gray-300', 'hover:bg-gray-600', 'hover:text-white');
+
+            document.getElementById('tab-providers').classList.remove('bg-white', 'text-black');
+            document.getElementById('tab-providers').classList.add('bg-gray-700', 'text-gray-300', 'hover:bg-gray-600', 'hover:text-white');
+
+            // Aquí se cargarían los datos o gráficos para el dashboard de indicadores
+            showToast("📊 Dashboard de Indicadores - En construcción...", false);
         }
     </script>
 </body>
 </html>
+

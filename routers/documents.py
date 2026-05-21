@@ -6,7 +6,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 
 from database import engine, get_db
-from models import Base, DBUser, DBDocument
+from models import Base, DBUser, DBDocument, DBHistory
 from security import get_current_user, get_password_hash
 from permissions import (
     obtener_usuarios_permitidos,
@@ -19,6 +19,22 @@ from permissions import (
 
 # Creamos el router para documentos
 router = APIRouter(prefix="/api", tags=["Documentos y Utilidades"])
+
+def registrar_historial(db: Session, doc_id: int, accion: str, usuario: str, motivo: str = ""):
+    # Evitar duplicados exactos en el mismo segundo para el mismo doc
+    from datetime import datetime, timedelta
+    ahora = datetime.utcnow()
+    existente = db.query(DBHistory).filter(
+        DBHistory.document_id == doc_id,
+        DBHistory.accion == accion,
+        DBHistory.usuario == usuario,
+        DBHistory.fecha >= ahora - timedelta(seconds=2)
+    ).first()
+    
+    if not existente:
+        historial = DBHistory(document_id=doc_id, accion=accion, usuario=usuario, motivo=motivo)
+        db.add(historial)
+    # No hacemos commit aquí para evitar duplicados en la sesión
 
 @router.post("/reset-db")
 def reset_database(current_user: DBUser = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -39,9 +55,9 @@ def eliminar_doc(doc_id: int, current_user: DBUser = Depends(get_current_user), 
     # Verificar permisos para eliminar (ahora incluye validación por estado)
     if not puede_eliminar(current_user.username, doc.subido_por, doc.estado_pago, db):
         if current_user.role == "proveedor":
-            raise HTTPException(status_code=403, detail="Solo puedes eliminar tus registros si están en estado 'Rechazado'")
+            raise HTTPException(status_code=403, detail="Solo puedes eliminar tus registros si están en estado \"Rechazado\"")
         elif current_user.role == "supervisor":
-            raise HTTPException(status_code=403, detail="Solo puedes eliminar registros en estado 'Pendiente'")
+            raise HTTPException(status_code=403, detail="Solo puedes eliminar registros en estado \"Pendiente\"")
         else:
             raise HTTPException(status_code=403, detail="No tienes permisos para eliminar este registro")
     
@@ -50,6 +66,10 @@ def eliminar_doc(doc_id: int, current_user: DBUser = Depends(get_current_user), 
         os.remove(doc.comprobante_pdf)
     if doc.comprobante_pago_pdf and os.path.exists(doc.comprobante_pago_pdf):
         os.remove(doc.comprobante_pago_pdf)
+    
+    # IMPORTANTE: Borrar historial asociado para evitar registros huérfanos
+    db.query(DBHistory).filter(DBHistory.document_id == doc_id).delete()
+    
     db.delete(doc)
     db.commit()
     return {"status": "ok"}
@@ -77,15 +97,23 @@ def editar_doc(doc_id: int, datos: dict = Body(...), current_user: DBUser = Depe
     if not puede_editar(current_user.username, doc.subido_por, db):
         raise HTTPException(status_code=403, detail="No tienes permisos para editar este registro")
     
-    doc.remitente_rfc = datos.get('rfc', doc.remitente_rfc)
-    doc.nombre = datos.get('nombre', doc.nombre)
-    doc.total = datos.get('total', doc.total)
-    doc.uuid_folio = datos.get('folio', doc.uuid_folio)
-    doc.centro_costo = datos.get('centro_costo', doc.centro_costo)
-    doc.subcatalogo_centro = datos.get('subcatalogo', doc.subcatalogo_centro)
-    doc.porcentaje_centro = datos.get('porcentaje_centro', doc.porcentaje_centro)
-    doc.fecha_pago = datos.get('fecha_pago', doc.fecha_pago)
-    doc.moneda = datos.get('moneda', doc.moneda)
+    doc.remitente_rfc = datos.get("rfc", doc.remitente_rfc)
+    doc.nombre = datos.get("nombre", doc.nombre)
+    doc.total = datos.get("total", doc.total)
+    doc.uuid_folio = datos.get("folio", doc.uuid_folio)
+    doc.centro_costo = datos.get("centro_costo", doc.centro_costo)
+    doc.subcatalogo_centro = datos.get("subcatalogo", doc.subcatalogo_centro)
+    doc.porcentaje_centro = datos.get("porcentaje_centro", doc.porcentaje_centro)
+    doc.fecha_pago = datos.get("fecha_pago", doc.fecha_pago)
+    doc.moneda = datos.get("moneda", doc.moneda)
+    doc.comentarios = datos.get("comentarios", doc.comentarios)
+    
+    # Nuevos campos para REFACCIONES
+    doc.naturaleza = datos.get("naturaleza", doc.naturaleza)
+    doc.cliente = datos.get("cliente", doc.cliente)
+    doc.modelo_maquina = datos.get("modelo_maquina", doc.modelo_maquina)
+    doc.numero_serie = datos.get("numero_serie", doc.numero_serie)
+    registrar_historial(db, doc.id, "Editado", current_user.username)
     db.commit()
     return {"status": "ok"}
 
@@ -118,8 +146,10 @@ def avanzar_estado(doc_id: int, current_user: DBUser = Depends(get_current_user)
     
     if doc.estado_pago == "Pendiente":
         doc.estado_pago = "Autorizado"
+        registrar_historial(db, doc.id, "Autorizado", current_user.username)
     elif doc.estado_pago == "Autorizado":
         doc.estado_pago = "Pagado"
+        registrar_historial(db, doc.id, "Pagado", current_user.username)
     db.commit()
     return {"status": "ok"}
 
@@ -135,13 +165,15 @@ def retroceder_estado(doc_id: int, current_user: DBUser = Depends(get_current_us
     
     if doc.estado_pago == "Pagado":
         doc.estado_pago = "Autorizado"
+        registrar_historial(db, doc.id, "Revertido a Autorizado", current_user.username)
     elif doc.estado_pago == "Autorizado":
         doc.estado_pago = "Pendiente"
+        registrar_historial(db, doc.id, "Revertido a Pendiente", current_user.username)
     db.commit()
     return {"status": "ok"}
 
 @router.put("/rechazar-registro/{doc_id}")
-def rechazar_registro(doc_id: int, current_user: DBUser = Depends(get_current_user), db: Session = Depends(get_db)):
+def rechazar_registro(doc_id: int, datos: dict = Body(...), current_user: DBUser = Depends(get_current_user), db: Session = Depends(get_db)):
     doc = db.query(DBDocument).filter(DBDocument.id == doc_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Documento no encontrado")
@@ -154,7 +186,27 @@ def rechazar_registro(doc_id: int, current_user: DBUser = Depends(get_current_us
     if doc.estado_pago != "Pendiente":
         raise HTTPException(status_code=400, detail="Solo se pueden rechazar registros en estado Pendiente")
     
+    motivo = datos.get("motivo", "Sin motivo")
     doc.estado_pago = "Rechazado"
+    registrar_historial(db, doc.id, "Rechazado", current_user.username, motivo)
+    db.commit()
+    return {"status": "ok"}
+
+@router.put("/enviar-correccion/{doc_id}")
+def enviar_correccion(doc_id: int, current_user: DBUser = Depends(get_current_user), db: Session = Depends(get_db)):
+    doc = db.query(DBDocument).filter(DBDocument.id == doc_id).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Documento no encontrado")
+    
+    # Solo el dueño puede enviar corrección
+    if doc.subido_por != current_user.username:
+        raise HTTPException(status_code=403, detail="Solo el creador del registro puede enviar correcciones")
+    
+    if doc.estado_pago != "Rechazado":
+        raise HTTPException(status_code=400, detail="Solo se pueden corregir registros rechazados")
+    
+    doc.estado_pago = "Pendiente"
+    registrar_historial(db, doc.id, "Corrección Enviada", current_user.username)
     db.commit()
     return {"status": "ok"}
 
@@ -173,6 +225,7 @@ async def subir_comprobante_pago(doc_id: int, file: UploadFile = File(...), curr
         buffer.write(await file.read())
     doc.comprobante_pago_pdf = file_path
     doc.estado_pago = "Pagado"
+    registrar_historial(db, doc.id, "Pagado (Comprobante)", current_user.username)
     db.commit()
     return {"status": "ok"}
 
@@ -183,35 +236,169 @@ def descargar_comprobante_pago(doc_id: int, db: Session = Depends(get_db)):
         return FileResponse(doc.comprobante_pago_pdf, filename=os.path.basename(doc.comprobante_pago_pdf))
     raise HTTPException(status_code=404, detail="Comprobante no encontrado")
 
+@router.post("/subir-otros-documentos/{doc_id}")
+async def subir_otros_documentos(doc_id: int, file: UploadFile = File(...), current_user: DBUser = Depends(get_current_user), db: Session = Depends(get_db)):
+    doc = db.query(DBDocument).filter(DBDocument.id == doc_id).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Documento no encontrado")
+
+    if not puede_editar(current_user.username, doc.subido_por, db):
+        raise HTTPException(status_code=403, detail="No tienes permisos para subir otros documentos")
+    
+    file_path = f"uploads/{doc_id}_otros_{file.filename}"
+    with open(file_path, "wb") as buffer:
+        buffer.write(await file.read())
+    
+    doc.otros_documentos_pdf = file_path
+    registrar_historial(db, doc.id, "Subido 'Otro Documento'", current_user.username)
+    db.commit()
+    return {"status": "ok"}
+
+@router.get("/descargar-otros-documentos/{doc_id}")
+def descargar_otros_documentos(doc_id: int, db: Session = Depends(get_db)):
+    doc = db.query(DBDocument).filter(DBDocument.id == doc_id).first()
+    if doc and doc.otros_documentos_pdf and os.path.exists(doc.otros_documentos_pdf):
+        return FileResponse(doc.otros_documentos_pdf, filename=os.path.basename(doc.otros_documentos_pdf))
+    raise HTTPException(status_code=404, detail="'Otro Documento' no encontrado")
+
 @router.get("/ver-datos")
 def ver_datos(current_user: DBUser = Depends(get_current_user), db: Session = Depends(get_db)):
-    # Obtener lista de usuarios cuyos registros puede ver
-    usuarios_permitidos = obtener_usuarios_permitidos(current_user.username, db)
-    
-    # Filtrar registros según permisos
-    registros = db.query(DBDocument).filter(
-        DBDocument.subido_por.in_(usuarios_permitidos)
-    ).order_by(DBDocument.id.desc()).all()
-    
-    return {"registros": registros, "role": current_user.role}
+    # Si el usuario es proveedor, solo puede ver sus propios documentos
+    # Si es supervisor, puede ver los suyos y los de sus subordinados
+    # Si es admin, puede ver todos los documentos
 
-@router.get("/descargar-excel")
-def descargar_excel(current_user: DBUser = Depends(get_current_user), db: Session = Depends(get_db)):
+    if current_user.role == "proveedor":
+        registros = db.query(DBDocument).filter(DBDocument.subido_por == current_user.username).order_by(DBDocument.id.desc()).all()
+    elif current_user.role == "supervisor":
+        usuarios_subordinados = current_user.subordinados.split(",") if current_user.subordinados else []
+        usuarios_subordinados = [u.strip() for u in usuarios_subordinados if u.strip()]
+        
+        # Un supervisor también puede ver sus propios registros
+        usuarios_a_mostrar = [current_user.username] + usuarios_subordinados
+        registros = db.query(DBDocument).filter(DBDocument.subido_por.in_(usuarios_a_mostrar)).order_by(DBDocument.id.desc()).all()
+    else: # admin
+        registros = db.query(DBDocument).order_by(DBDocument.id.desc()).all()
+    
+    # Incluir historial para cada registro
+    resultado = []
+    for r in registros:
+        historial = db.query(DBHistory).filter(DBHistory.document_id == r.id).order_by(DBHistory.fecha.asc()).all()
+        r_dict = {c.name: getattr(r, c.name) for c in r.__table__.columns}
+        r_dict["historial"] = [{
+            "accion": h.accion,
+            "motivo": h.motivo,
+            "usuario": h.usuario,
+            "fecha": h.fecha.strftime("%Y-%m-%d %H:%M")
+        } for h in historial]
+        resultado.append(r_dict)
+
+    # Calcular Métricas Clave (KPIs)
+    from datetime import datetime
+    hoy = datetime.utcnow()
+    
+    total_pagado_mes = 0.0
+    total_en_proceso = 0.0
+    total_rechazado = 0.0
+    total_pendiente = 0.0
+
+    for r in registros:
+        if r.estado_pago == "Pagado" and r.fecha_registro.year == hoy.year and r.fecha_registro.month == hoy.month:
+            total_pagado_mes += (r.total if r.total is not None else 0.0)
+        elif r.estado_pago == "Autorizado":
+            total_en_proceso += (r.total if r.total is not None else 0.0)
+        elif r.estado_pago == "Rechazado":
+            total_rechazado += (r.total if r.total is not None else 0.0)
+        elif r.estado_pago == "Pendiente":
+            total_pendiente += (r.total if r.total is not None else 0.0)
+
+    kpis = {
+        "total_registros": len(registros),
+        "total_pagado_mes": total_pagado_mes,
+        "total_en_proceso": total_en_proceso,
+        "total_rechazado": total_rechazado,
+        "total_pendiente": total_pendiente,
+    }
+    
+    return {"registros": resultado, "role": current_user.role, "kpis": kpis}
+
+@router.post("/descargar-excel")
+def descargar_excel(datos: dict = Body(...), current_user: DBUser = Depends(get_current_user), db: Session = Depends(get_db)):
     # Verificar permisos para exportar
     if not puede_exportar(current_user.username, db):
         raise HTTPException(status_code=403, detail="No tienes permisos para exportar")
     
+    ids = datos.get("ids")
+    campos = datos.get("campos", [])
+    
     # Obtener registros según permisos
     usuarios_permitidos = obtener_usuarios_permitidos(current_user.username, db)
-    docs = db.query(DBDocument).filter(
-        DBDocument.subido_por.in_(usuarios_permitidos)
-    ).order_by(DBDocument.id.desc()).all()
+    query = db.query(DBDocument).filter(DBDocument.subido_por.in_(usuarios_permitidos))
     
-    data = [{"ID": d.id, "Origen": d.tipo, "RFC": d.remitente_rfc, "Nombre": d.nombre, "UUID/Folio": d.uuid_folio, "Total": d.total, "C. Costo": d.centro_costo, 
-             "Fecha Pago": d.fecha_pago, "Estado": d.estado_pago, "Usuario": d.subido_por} for d in docs]
-    df = pd.DataFrame(data)
+    if ids:
+        query = query.filter(DBDocument.id.in_(ids))
+    
+    docs = query.order_by(DBDocument.id.desc()).all()
+    
+    # Diccionario de todos los campos posibles
+    all_data = []
+    for d in docs:
+        row = {
+            "ID": d.id,
+            "Origen": d.tipo,
+            "RFC Emisor": d.remitente_rfc,
+            "Nombre Emisor": d.nombre,
+            "UUID/Folio": d.uuid_folio,
+            "Total": d.total,
+            "Moneda": d.moneda,
+            "Fecha Emisión": d.fecha_emision,
+            "Fecha Registro": d.fecha_registro.strftime("%Y-%m-%d %H:%M") if d.fecha_registro else "",
+            "Usuario": d.subido_por,
+            "Centro Costo": d.centro_costo,
+            "Subcatálogo": d.subcatalogo_centro,
+            "Porcentaje": d.porcentaje_centro,
+            "Fecha Pago": d.fecha_pago,
+            "Estado": d.estado_pago,
+            "Uso CFDI": d.uso_cfdi,
+            "Forma Pago": d.forma_pago,
+            "Método Pago": d.metodo_pago,
+            "Clave SAT": d.clave_sat,
+            "Descripción SAT": d.descripcion_sat,
+            "Comentarios": d.comentarios
+        }
+        
+        # Si se especificaron campos, filtrar, si no, enviar todos
+        if campos:
+            filtered_row = {k: v for k, v in row.items() if k in campos}
+            all_data.append(filtered_row)
+        else:
+            all_data.append(row)
+
+    df = pd.DataFrame(all_data)
     output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
         df.to_excel(writer, index=False)
     output.seek(0)
-    return StreamingResponse(output, headers={'Content-Disposition': 'attachment; filename="DataHub_Ulma_Reporte.xlsx"'})
+    return StreamingResponse(output, headers={"Content-Disposition": "attachment; filename=\"DataHub_Reporte.xlsx\""})
+
+@router.post("/documentos/bulk-delete")
+def bulk_eliminar_docs(datos: dict = Body(...), current_user: DBUser = Depends(get_current_user), db: Session = Depends(get_db)):
+    ids = datos.get("ids", [])
+    if not ids:
+        return {"status": "ok", "deleted": 0}
+    
+    docs = db.query(DBDocument).filter(DBDocument.id.in_(ids)).all()
+    deleted_count = 0
+    
+    for doc in docs:
+        if puede_eliminar(current_user.username, doc.subido_por, doc.estado_pago, db):
+            # Eliminar archivos asociados
+            if doc.comprobante_pdf and os.path.exists(doc.comprobante_pdf):
+                os.remove(doc.comprobante_pdf)
+            if doc.comprobante_pago_pdf and os.path.exists(doc.comprobante_pago_pdf):
+                os.remove(doc.comprobante_pago_pdf)
+            db.query(DBHistory).filter(DBHistory.document_id == doc.id).delete()
+            db.delete(doc)
+            deleted_count += 1
+            
+    db.commit()
+    return {"status": "ok", "deleted": deleted_count}

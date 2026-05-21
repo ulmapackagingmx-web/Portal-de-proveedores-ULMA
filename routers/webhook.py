@@ -104,12 +104,16 @@ async def procesar_correo_webhook(datos: dict = Body(...)):
             clave_sat=clave_sat,
             descripcion_sat=descripcion_concepto,
             descripcion_concepto=descripcion_concepto,
-            moneda=moneda
+            moneda=moneda,
+            comentarios=""
         )
         
         db.add(nuevo_doc)
         db.commit()
         db.refresh(nuevo_doc)
+
+        from routers.documents import registrar_historial
+        registrar_historial(db, nuevo_doc.id, "Creado (Webhook/Correo)", usuario)
         
         # Si hay PDF, guardarlo
         if pdf_base64:
