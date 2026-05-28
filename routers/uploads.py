@@ -183,6 +183,7 @@ async def procesar_manual(datos: dict = Body(...), current_user: DBUser = Depend
         centro_costo=datos.get("centro"),
         subcatalogo_centro=datos.get("subcatalogo", ""),
         porcentaje_centro=datos.get("porcentaje", "100%"),
+        porcentaje_pago=datos.get("porcentaje_pago", 100.0),
         fecha_pago=datos.get("fecha"), 
         subido_por=current_user.username,
         moneda=datos.get("moneda", "MXN"),

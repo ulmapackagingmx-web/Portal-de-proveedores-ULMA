@@ -25,8 +25,10 @@ class DBDocument(Base):
     subcatalogo_centro = Column(String, default="")  # Subcatálogo del centro de costo
     porcentaje_centro = Column(String, default="100%")
     fecha_pago = Column(String, default="POR DEFINIR") 
+    porcentaje_pago = Column(Float, default=100.0)
     comprobante_pdf = Column(String, default="") 
     estado_pago = Column(String, default="Pendiente")  # Pendiente, Autorizado, Pagado
+    fecha_estimada_pago = Column(String, default="")
     comprobante_pago_pdf = Column(String, default="")
     otros_documentos_pdf = Column(String, default="")
     # Nuevos campos para XML
@@ -44,9 +46,10 @@ class DBDocument(Base):
 
     # Nuevos campos para "REFACCIONES"
     naturaleza = Column(String, default="")  # Venta, Costo de venta, Garantía
-    cliente = Column(String, default="")
-    modelo_maquina = Column(String, default="")
-    numero_serie = Column(String, default="")
+    numero_pedido = Column(String, default="") # Nuevo campo para número de pedido
+    # cliente = Column(String, default="") # Eliminado
+    # modelo_maquina = Column(String, default="") # Eliminado
+    # numero_serie = Column(String, default="") # Eliminado
 
 class DBHistory(Base):
     __tablename__ = "history"
@@ -69,5 +72,5 @@ class DBProvider(Base):
     validacion_bancaria = Column(Boolean, default=False)
     validacion_expediente = Column(Boolean, default=False)
     campo_libre = Column(String, default="")
-
+    email_contacto = Column(String, default="")
 

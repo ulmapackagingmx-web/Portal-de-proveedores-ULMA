@@ -3,6 +3,15 @@
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Portal DataHub - Ulma</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {}
+        }
+      }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/preline/dist/preline.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
@@ -10,6 +19,21 @@
         .ulma-red { background-color: #E3000F; } 
         .ulma-red-text { color: #E3000F; }
         .ulma-red-hover:hover { background-color: #B3000A; }
+
+        .hs-overlay {
+            z-index: 1050; /* Asegura que los modales de Preline estén por encima de otros elementos */
+        }
+
+        /* Estilos para el overlay de Preline */
+        .hs-overlay-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.75); /* Fondo oscuro semitransparente */
+            z-index: 1040; /* Debe ser menor que el modal pero mayor que el contenido normal */
+        }
     </style>
 </head>
 <body class="text-gray-800 bg-gray-100 min-h-screen flex flex-col font-sans">
@@ -20,8 +44,8 @@
     </div>
     
     <!-- PANTALLA DE LOGIN -->
-    <div id="login-screen" class="flex-grow flex items-center justify-center">
-        <div class="bg-white p-10 rounded-xl shadow-2xl w-full max-w-md border-t-8 ulma-red">
+    <div id="login-screen" class="flex-grow flex items-center justify-center py-10 px-4 sm:px-6 lg:px-8">
+        <div class="bg-white p-8 sm:p-10 rounded-xl shadow-lg w-full max-w-md border-t-8 ulma-red">
             <div class="text-center mb-8 flex flex-col items-center">
                 <!-- LOGO ULMA OFICIAL VECTORIAL PERFECTO -->
                 <svg class="h-16 w-auto mb-2" viewBox="0 0 200 50" xmlns="http://www.w3.org/2000/svg">
@@ -33,550 +57,719 @@
                 </svg>
                 <p class="text-sm font-bold text-gray-500 uppercase tracking-widest mt-2">DataHub Administrativo</p>
             </div>
+            
             <form onsubmit="event.preventDefault(); login();">
-                <input id="username" type="text" placeholder="Usuario" class="w-full mb-4 px-4 py-3 border border-gray-300 rounded text-base focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600" required>
-                <input id="password" type="password" placeholder="Contraseña" class="w-full mb-6 px-4 py-3 border border-gray-300 rounded text-base focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600" required>
-                <button type="submit" class="w-full ulma-red ulma-red-hover text-white font-bold py-3 rounded transition-all uppercase text-base tracking-wide shadow-lg">Iniciar Sesión</button>
+                <div class="space-y-5">
+                    <div>
+                        <label for="username" class="block text-sm font-medium mb-2 text-gray-800">Usuario</label>
+                        <div class="relative">
+                            <input type="text" id="username" class="py-3 px-4 block w-full border-gray-200 rounded-lg text-sm focus:border-red-600 focus:ring-red-600 shadow-sm" required placeholder="Ingresa tu usuario">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="password" class="block text-sm font-medium mb-2 text-gray-800">Contraseña</label>
+                        <div class="relative">
+                            <input type="password" id="password" class="py-3 px-4 block w-full border-gray-200 rounded-lg text-sm focus:border-red-600 focus:ring-red-600 shadow-sm" required placeholder="Ingresa tu contraseña">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="w-full py-3 px-4 inline-flex justify-center items-center gap-x-2 text-sm font-bold rounded-lg border border-transparent ulma-red ulma-red-hover text-white shadow-lg uppercase tracking-wide transition-all focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2">
+                        Iniciar Sesión
+                    </button>
+                </div>
             </form>
         </div>
     </div>
+    
 
     <!-- PANTALLA DASHBOARD -->
     <div id="dashboard-screen" class="hidden flex-grow flex flex-col">
-        <nav class="bg-black p-4 text-white shadow-md flex justify-between items-center px-6">
-            <div class="flex items-center">
-                <!-- LOGO ULMA NAVBAR (TEXTO BLANCO) -->
-                <svg class="h-8 w-auto mr-4" viewBox="0 0 200 50" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="0" y="5" width="40" height="40" fill="#000000" />
-                    <path d="M 2 5 L 38 5 L 38 22 C 38 46, 2 46, 2 22 Z" fill="#FFFFFF" />
-                    <path d="M 11 5 L 29 5 L 29 18 C 29 35, 11 35, 11 18 Z" fill="#E3000F" />
-                    <text x="48" y="42" font-family="Arial Black, Impact, sans-serif" font-weight="900" font-size="44"
-                        fill="#FFFFFF" letter-spacing="-2">ULMA</text>
-                </svg>
-                <span class="text-gray-400 font-medium text-lg border-l border-gray-600 pl-4 uppercase tracking-wider">DataHub</span>
-            </div>
-            <div class="flex items-center">
-                <!-- NEW TABS -->
-                <button id="tab-main" onclick="showMainView()" class="px-4 py-2 rounded-t-lg text-sm font-bold transition-colors mr-1 bg-white text-black">Inicio</button>
-                <button id="tab-providers" onclick="showProvidersView()" class="px-4 py-2 rounded-t-lg text-sm font-bold transition-colors mr-1 bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white">Datos Proveedores</button>
-                <button id="tab-indicators" onclick="showIndicatorsView()" class="px-4 py-2 rounded-t-lg text-sm font-bold transition-colors mr-4 bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white">Indicadores</button>
-                <span id="user-greeting" class="mr-4 text-sm font-semibold text-gray-300"></span>
-                <button onclick="logout()" class="ulma-red ulma-red-hover px-4 py-2 rounded text-sm font-bold uppercase tracking-wide transition-colors">Salir</button>
-            </div>
-        </nav>
+        
+        <header class="flex flex-wrap sm:justify-start sm:flex-nowrap z-50 w-full bg-black border-b border-gray-800 text-sm py-3 sm:py-0 shadow-lg">
+            <nav class="relative max-w-[90rem] w-full mx-auto px-4 flex items-center justify-between sm:px-6 lg:px-8" aria-label="Global">
+                
+                <!-- SECCIÓN IZQUIERDA: LOGO Y TÍTULO -->
+                <div class="flex items-center gap-x-4 py-3">
+                    <!-- LOGO ULMA NAVBAR (TEXTO BLANCO) -->
+                    <svg class="h-8 w-auto" viewBox="0 0 200 50" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="0" y="5" width="40" height="40" fill="#000000" />
+                        <path d="M 2 5 L 38 5 L 38 22 C 38 46, 2 46, 2 22 Z" fill="#FFFFFF" />
+                        <path d="M 11 5 L 29 5 L 29 18 C 29 35, 11 35, 11 18 Z" fill="#E3000F" />
+                        <text x="48" y="42" font-family="Arial Black, Impact, sans-serif" font-weight="900" font-size="44" fill="#FFFFFF" letter-spacing="-2">ULMA</text>
+                    </svg>
+                    <span class="text-gray-400 font-medium text-lg border-l border-gray-600 pl-4 uppercase tracking-wider">DataHub</span>
+                </div>
+                
+                <!-- SECCIÓN DERECHA: TABS Y USUARIO -->
+                <div class="flex items-center gap-x-6">
+                    
+                    <!-- TABS TIPO PRELINE (Segmented Control) -->
+                    <div class="hidden sm:flex p-1 bg-gray-900 rounded-xl border border-gray-700 shadow-sm" aria-label="Tabs" role="tablist">
+                        <button type="button" class="hs-tab-active:bg-white hs-tab-active:text-gray-900 px-5 py-2 text-sm font-bold rounded-lg transition-all duration-200 bg-transparent text-gray-400 hover:text-white disabled:opacity-50 disabled:pointer-events-none active" id="segment-item-1" aria-selected="true" data-hs-tab="#segment-1" aria-controls="segment-1" role="tab">
+                            Inicio
+                        </button>
+                        <button type="button" class="hs-tab-active:bg-white hs-tab-active:text-gray-900 px-5 py-2 text-sm font-bold rounded-lg transition-all duration-200 bg-transparent text-gray-400 hover:text-white disabled:opacity-50 disabled:pointer-events-none ml-1" id="segment-item-2" aria-selected="false" data-hs-tab="#segment-2" aria-controls="segment-2" role="tab" onclick="fetchProviders()">
+                            Datos Proveedores
+                        </button>
+                    </div>
+                    
+                    <!-- INFO USUARIO Y BOTÓN SALIR -->
+                    <div class="flex items-center gap-x-4 border-l border-gray-700 pl-6">
+                        <span id="user-greeting" class="text-sm font-semibold text-gray-300"></span>
+                        <button onclick="logout()" class="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-bold rounded-lg border border-transparent ulma-red ulma-red-hover text-white shadow-sm uppercase tracking-wide focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2 focus:ring-offset-black transition-all">
+                            <i class="fas fa-sign-out-alt"></i> Salir
+                        </button>
+                    </div>
 
-        <div class="p-6 grid grid-cols-1 xl:grid-cols-6 gap-6 w-full h-full">
+                </div>
+            </nav>
+        </header>
+            
+        <div class="p-6 w-full h-full">
+          <div id="segment-1" role="tabpanel" aria-labelledby="segment-item-1" class="h-full">
+            <div class="grid grid-cols-1 xl:grid-cols-6 gap-6 h-full">
             
             <!-- BARRA LATERAL (ENTRADAS) -->
             <div class="xl:col-span-1 space-y-4">
-                <div class="bg-white p-4 rounded shadow border-l-4 border-black">
-                    <h2 class="font-bold mb-2 text-sm uppercase"><i class="fas fa-file-code mr-1 text-gray-500"></i> XML (Múltiples)</h2>
-                    <input type="file" id="xml-file" accept=".xml" multiple class="text-sm mb-3 w-full text-gray-500 file:bg-gray-100 file:border-0 file:rounded file:px-3 file:py-1.5">
-                    <button onclick="uploadXML()" class="w-full bg-black hover:bg-gray-800 text-white py-2 rounded text-sm font-bold transition"><i class="fas fa-upload mr-1"></i> Procesar XML</button>
+                
+                <div class="flex flex-col bg-white border border-gray-200 shadow-sm rounded-xl border-l-4 border-l-black">
+                    <div class="p-4">
+                        <h2 class="font-bold mb-3 text-sm uppercase text-gray-800"><i class="fas fa-file-code mr-1 text-gray-500"></i> XML (Múltiples)</h2>
+                        <input type="file" id="xml-file" accept=".xml" multiple class="block w-full border border-gray-200 shadow-sm rounded-lg text-sm focus:z-10 focus:border-gray-900 focus:ring-gray-900 disabled:opacity-50 disabled:pointer-events-none file:bg-gray-100 file:border-0 file:me-3 file:py-2 file:px-3 file:text-gray-500 mb-3">
+                        <button onclick="uploadXML()" class="w-full py-2 px-3 inline-flex justify-center items-center gap-x-2 text-sm font-bold rounded-lg border border-transparent bg-black text-white hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 transition-all"><i class="fas fa-upload mr-1"></i> Procesar XML</button>
+                    </div>
                 </div>
                 
-                <div class="bg-white p-4 rounded shadow border-l-4 border-black">
-                    <h2 class="font-bold mb-2 text-sm uppercase"><i class="fas fa-envelope mr-1 text-gray-500"></i> Texto/Correo</h2>
-                    <textarea id="text-input" rows="3" class="w-full text-sm p-2 border border-gray-300 rounded mb-3 focus:ring-1 focus:ring-black focus:outline-none" placeholder="Pagar a ULMA... $500.00"></textarea>
-                    <button onclick="uploadText()" class="w-full bg-black hover:bg-gray-800 text-white py-2 rounded text-sm font-bold transition">Extraer Datos</button>
+                <div class="flex flex-col bg-white border border-gray-200 shadow-sm rounded-xl border-l-4 border-l-black">
+                    <div class="p-4">
+                        <h2 class="font-bold mb-3 text-sm uppercase text-gray-800"><i class="fas fa-envelope mr-1 text-gray-500"></i> Texto/Correo</h2>
+                        <textarea id="text-input" rows="3" class="py-2 px-3 block w-full border-gray-200 rounded-lg text-sm focus:border-gray-900 focus:ring-gray-900 shadow-sm mb-3 placeholder-gray-400" placeholder="Pagar a ULMA... $500.00"></textarea>
+                        <button onclick="uploadText()" class="w-full py-2 px-3 inline-flex justify-center items-center gap-x-2 text-sm font-bold rounded-lg border border-transparent bg-black text-white hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 transition-all">Extraer Datos</button>
+                    </div>
                 </div>
 
-                <div class="bg-white p-4 rounded shadow border-l-4 border-black">
-                    <h2 class="font-bold mb-2 text-sm uppercase"><i class="fas fa-table mr-1 text-gray-500"></i> Excel Masivo</h2>
-                    <p class="text-xs text-gray-500 mb-2 leading-tight">Req: RFC, Nombre, Total, Centro, Fecha Pago, Folio, Moneda</p>
-                    <input type="file" id="excel-file" accept=".xlsx" class="text-sm mb-3 w-full text-gray-500 file:bg-gray-100 file:border-0 file:rounded file:px-3 file:py-1.5">
-                    <button onclick="uploadExcel()" class="w-full bg-black hover:bg-gray-800 text-white py-2 rounded text-sm font-bold transition">Cargar Layout</button>
+                <div class="flex flex-col bg-white border border-gray-200 shadow-sm rounded-xl border-l-4 border-l-black">
+                    <div class="p-4">
+                        <h2 class="font-bold mb-2 text-sm uppercase text-gray-800"><i class="fas fa-table mr-1 text-gray-500"></i> Excel Masivo</h2>
+                        <!-- Mantenemos intacta la descripción solicitada -->
+                        <p class="text-[11px] text-gray-500 mb-3 leading-tight font-medium">Req: RFC, Nombre, Total, Centro, Fecha Pago, Folio, Moneda</p>
+                        <input type="file" id="excel-file" accept=".xlsx" class="block w-full border border-gray-200 shadow-sm rounded-lg text-sm focus:z-10 focus:border-gray-900 focus:ring-gray-900 disabled:opacity-50 disabled:pointer-events-none file:bg-gray-100 file:border-0 file:me-3 file:py-2 file:px-3 file:text-gray-500 mb-3">
+                        <button onclick="uploadExcel()" class="w-full py-2 px-3 inline-flex justify-center items-center gap-x-2 text-sm font-bold rounded-lg border border-transparent bg-black text-white hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 transition-all">Cargar Layout</button>
+                    </div>
                 </div>
 
-                <div class="bg-white p-4 rounded shadow border-l-4 border-black">
-                    <h2 class="font-bold mb-2 text-sm uppercase"><i class="fas fa-plus-circle mr-1 text-gray-500"></i> Registro Manual</h2>
-                    <button onclick="openManualModal()" class="w-full bg-black hover:bg-gray-800 text-white py-2 rounded text-sm font-bold transition"><i class="fas fa-keyboard mr-1"></i> Abrir Formulario</button>
+                <div class="flex flex-col bg-white border border-gray-200 shadow-sm rounded-xl border-l-4 border-l-black">
+                    <div class="p-4">
+                        <h2 class="font-bold mb-3 text-sm uppercase text-gray-800"><i class="fas fa-plus-circle mr-1 text-gray-500"></i> Registro Manual</h2>
+                        <button onclick="openManualModal()" data-hs-overlay="#manual-modal" class="w-full py-2 px-3 inline-flex justify-center items-center gap-x-2 text-sm font-bold rounded-lg border border-transparent bg-black text-white hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 transition-all"><i class="fas fa-keyboard mr-1"></i> Abrir Formulario</button>
+                    </div>
                 </div>
             </div>
+            
             <!-- ÁREA DE TABLA PRINCIPAL -->
             <div id="main-content-view" class="xl:col-span-5 flex flex-col h-full">
 
                 <!-- NUEVO DASHBOARD DE MÉTRICAS -->
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                    <div class="bg-white p-4 shadow rounded-lg border-l-4 border-green-500">
-                        <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Pagado este Mes</h3>
-                        <p id="kpi-pagado" class="text-3xl font-black text-green-600">$0.00</p>
+                    
+                    <div class="flex flex-col bg-white border border-gray-200 shadow-sm rounded-xl border-l-4 border-l-green-500">
+                        <div class="p-4">
+                            <h3 class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Pagado este Mes</h3>
+                            <p id="kpi-pagado" class="mt-1 text-3xl font-black text-green-600">$0.00</p>
+                        </div>
                     </div>
-                    <div class="bg-white p-4 shadow rounded-lg border-l-4 border-blue-500 cursor-pointer" onclick="aplicarFiltro('en_proceso')">
-                        <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider">En Proceso</h3>
-                        <p id="kpi-en-proceso" class="text-3xl font-black text-blue-600">$0.00</p>
+                    
+                    <div class="flex flex-col bg-white border border-gray-200 shadow-sm rounded-xl border-l-4 border-l-blue-500 cursor-pointer hover:bg-blue-50 transition-colors" onclick="aplicarFiltro('en_proceso')">
+                        <div class="p-4">
+                            <h3 class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">En Proceso</h3>
+                            <p id="kpi-en-proceso" class="mt-1 text-3xl font-black text-blue-600">$0.00</p>
+                        </div>
                     </div>
-                    <div class="bg-white p-4 shadow rounded-lg border-l-4 border-red-500 cursor-pointer" onclick="aplicarFiltro('rechazado')">
-                        <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Rechazado</h3>
-                        <p id="kpi-rechazado" class="text-3xl font-black text-red-600">$0.00</p>
+                    
+                    <div class="flex flex-col bg-white border border-gray-200 shadow-sm rounded-xl border-l-4 border-l-red-500 cursor-pointer hover:bg-red-50 transition-colors" onclick="aplicarFiltro('rechazado')">
+                        <div class="p-4">
+                            <h3 class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Rechazado</h3>
+                            <p id="kpi-rechazado" class="mt-1 text-3xl font-black text-red-600">$0.00</p>
+                        </div>
                     </div>
 
-                    <div class="bg-white p-4 shadow rounded-lg border-l-4 border-yellow-500 cursor-pointer" onclick="aplicarFiltro('pendiente')">
-                        <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Pendiente</h3>
-                        <p id="kpi-pendiente" class="text-3xl font-black text-yellow-600">$0.00</p>
+                    <div class="flex flex-col bg-white border border-gray-200 shadow-sm rounded-xl border-l-4 border-l-yellow-500 cursor-pointer hover:bg-yellow-50 transition-colors" onclick="aplicarFiltro('pendiente')">
+                        <div class="p-4">
+                            <h3 class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Pendiente</h3>
+                            <p id="kpi-pendiente" class="mt-1 text-3xl font-black text-yellow-600">$0.00</p>
+                        </div>
                     </div>
                 </div>
 
-                <!-- CABECERA Y FILTROS -->
-                <div class="bg-white p-4 shadow rounded-t-lg border-b-2 border-gray-200">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-2xl font-black text-black leading-tight">REGISTROS CONSOLIDADOS</h2>
-                        <div class="flex space-x-2">
-                            <button onclick="openManualModal()" class="bg-white border-2 border-black text-black hover:bg-black hover:text-white px-3 py-1.5 rounded text-sm font-bold transition"><i class="fas fa-plus mr-1"></i> Manual</button>
-                            <button onclick="fetchData()" class="bg-gray-200 text-black hover:bg-gray-300 px-3 py-1.5 rounded text-sm font-bold transition"><i class="fas fa-sync"></i> Actualizar</button>
-                            <button id="btn-exportar" onclick="downloadExcel()" class="hidden ulma-red ulma-red-hover text-white px-3 py-1.5 rounded text-sm font-bold shadow transition"><i class="fas fa-download mr-1"></i> Exportar</button>
-                            <button id="btn-bulk-delete" onclick="bulkDelete()" class="hidden bg-gray-600 hover:bg-gray-700 text-white px-3 py-1.5 rounded text-sm font-bold shadow transition"><i class="fas fa-trash-sweep mr-1"></i> Eliminar Selección</button>
-                            <button id="btn-reset" onclick="resetDB()" class="hidden bg-red-900 hover:bg-red-950 text-white px-3 py-1.5 rounded text-sm font-bold shadow transition" title="Borrar BD"><i class="fas fa-skull-crossbones mr-1"></i> Reset BD</button>
-            </div>
-        </div>
+                <!-- CABECERA, FILTROS Y TABLA (Unificados en Tarjeta Preline) -->
+                <div class="flex flex-col bg-white border border-gray-200 shadow-sm rounded-xl mb-6 flex-grow">
+                    
+                    <!-- Header -->
+                    <div class="px-6 py-4 grid gap-3 md:flex md:justify-between md:items-center border-b border-gray-200">
+                        <div>
+                            <h2 class="text-2xl font-black text-gray-800 leading-tight">REGISTROS CONSOLIDADOS</h2>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button onclick="openManualModal()" data-hs-overlay="#manual-modal" class="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-bold rounded-lg border border-gray-200 bg-white text-gray-800 shadow-sm hover:bg-gray-50 disabled:opacity-50 disabled:pointer-events-none transition-all"><i class="fas fa-plus mr-1"></i> Manual</button>
+                            <button onclick="fetchData()" class="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-bold rounded-lg border border-transparent bg-gray-200 text-black hover:bg-gray-300 transition-all"><i class="fas fa-sync"></i> Actualizar</button>
+                            <button id="btn-exportar" onclick="downloadExcel()" data-hs-overlay="#export-modal" class="hidden py-2 px-3 inline-flex items-center gap-x-2 text-sm font-bold rounded-lg border border-transparent ulma-red ulma-red-hover text-white shadow-sm transition-all"><i class="fas fa-download mr-1"></i> Exportar</button>
+                            <button id="btn-bulk-delete" onclick="bulkDelete()" class="hidden py-2 px-3 inline-flex items-center gap-x-2 text-sm font-bold rounded-lg border border-transparent bg-gray-600 text-white hover:bg-gray-700 shadow-sm transition-all"><i class="fas fa-trash-sweep mr-1"></i> Eliminar Selección</button>
+                            <button id="btn-reset" onclick="resetDB()" class="hidden py-2 px-3 inline-flex items-center gap-x-2 text-sm font-bold rounded-lg border border-transparent bg-red-900 text-white hover:bg-red-950 shadow-sm transition-all" title="Borrar BD"><i class="fas fa-skull-crossbones mr-1"></i> Reset BD</button>
+                        </div>
+                    </div>
 
-                    <div class="flex flex-col xl:flex-row justify-between items-center bg-gray-50 p-3 rounded border border-gray-200 gap-4">
+                    <!-- Filtros y Búsqueda -->
+                    <div class="p-4 bg-gray-50 border-b border-gray-200 flex flex-col xl:flex-row justify-between items-center gap-4">
                         <div class="flex flex-wrap w-full xl:w-3/4 gap-3">
                             <div class="relative flex-grow min-w-[250px]">
-                                <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
-                                <input type="text" id="filtro-texto" onkeyup="applyFilters()" placeholder="Buscar por RFC, Nombre, Centro, Folio..." class="w-full pl-9 pr-3 py-2 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-black">
+                                <div class="absolute inset-y-0 start-0 flex items-center pointer-events-none ps-3">
+                                    <i class="fas fa-search text-gray-400"></i>
+                                </div>
+                                <input type="text" id="filtro-texto" onkeyup="applyFilters()" placeholder="Buscar por RFC, Nombre, Centro, Folio..." class="py-2 px-3 ps-9 block w-full border border-gray-200 rounded-lg text-sm focus:border-black focus:ring-black shadow-sm bg-white">
                             </div>
-                            <select id="filtro-origen" onchange="applyFilters()" class="border border-gray-300 py-2 px-3 rounded text-sm focus:ring-1 focus:ring-black min-w-[150px]">
+                            
+                            <select id="filtro-origen" onchange="applyFilters()" class="py-2 px-3 block border border-gray-200 rounded-lg text-sm focus:border-black focus:ring-black shadow-sm min-w-[150px] bg-white">
                                 <option value="">Todos los Orígenes</option>
                                 <option value="XML">XML</option>
                                 <option value="CORREO">CORREO</option>
                                 <option value="EXCEL">EXCEL</option>
                                 <option value="MANUAL">MANUAL</option>
-                </select>
+                            </select>
 
-                            <div class="flex items-center space-x-2 bg-white px-3 py-1.5 rounded border border-gray-300">
+                            <div class="flex items-center space-x-2 bg-white px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm">
                                 <span class="text-xs font-bold text-gray-500">DESDE:</span>
-                                <input type="date" id="filtro-fecha-inicio" onchange="applyFilters()" class="text-sm focus:outline-none bg-transparent">
+                                <input type="date" id="filtro-fecha-inicio" onchange="applyFilters()" class="text-sm focus:outline-none bg-transparent text-gray-700">
                             </div>
-                            <div class="flex items-center space-x-2 bg-white px-3 py-1.5 rounded border border-gray-300">
+                            <div class="flex items-center space-x-2 bg-white px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm">
                                 <span class="text-xs font-bold text-gray-500">HASTA:</span>
-                                <input type="date" id="filtro-fecha-fin" onchange="applyFilters()" class="text-sm focus:outline-none bg-transparent">
-                </div>
+                                <input type="date" id="filtro-fecha-fin" onchange="applyFilters()" class="text-sm focus:outline-none bg-transparent text-gray-700">
+                            </div>
                         </div>
 
-                        <div class="w-full xl:w-1/4 text-right bg-white px-5 py-3 rounded border border-gray-200 shadow-sm">
+                        <div class="w-full xl:w-1/4 text-right bg-white px-5 py-3 rounded-lg border border-gray-200 shadow-sm">
                             <span class="text-xs font-bold text-gray-500 uppercase tracking-widest block mb-1">Sumatoria Mostrada</span>
                             <span id="suma-total" class="text-3xl font-black text-black leading-none">$0.00</span>
                         </div>
-                                    </div>
-                                </div>
-
-                <div class="bg-white shadow rounded-b-lg overflow-hidden flex-grow relative">
-                    <div id="empty-state" class="hidden absolute inset-0 flex flex-col items-center justify-center text-center p-10">
-                        <i class="fas fa-cloud-upload-alt text-5xl text-gray-300 mb-4"></i>
-                        <h3 class="font-bold text-xl text-gray-700">Aún no hay registros</h3>
-                        <p class="text-sm text-gray-500">Sube tu primer XML o crea un registro manual para empezar a gestionar tus documentos.</p>
                     </div>
-                    <div id="table-container" class="overflow-x-auto h-full">
-                        <table class="w-full text-left text-base">
-                            <thead class="bg-gray-200 text-gray-800 uppercase tracking-wider text-xs">
-                <tr id="bulk-controls" class="hidden bg-blue-50">
-                                    <th class="p-2 border-b border-gray-300 text-center">
-                                        <input type="checkbox" id="select-all" onclick="toggleSelectAll()">
-                                    </th>
-                                    <th colspan="9" class="p-2 border-b border-gray-300 text-xs text-blue-800 font-bold">
-                                        <span id="selected-count">0</span> seleccionados
-                                    </th>
-                                </tr>
-                                <tr>
-                                    <th class="p-3 border-b border-gray-300 w-12"></th> <!-- Checkbox column -->
-                                    <th class="p-3 border-b border-gray-300 w-24">Origen</th>
-                                    <th class="p-3 border-b border-gray-300">Datos Entidad</th>
-                                    <th class="p-3 border-b border-gray-300 text-right">Importe Total</th>
-                                    <th class="p-3 border-b border-gray-300">Logística</th>
-                                    <th class="p-3 border-b border-gray-300 text-center w-32">Estado</th>
-                                    <th class="p-3 border-b border-gray-300 text-center w-32">Documentos</th>
-                                    <th class="p-3 border-b border-gray-300 text-center w-24">Config</th>
-                                </tr>
-                            </thead>
-                            <tbody id="data-table" class="text-gray-700 font-medium text-sm"></tbody>
-                        </table>
-            </div>
-            </div>
-        </div>
 
+                    <!-- Tabla -->
+                    <div class="overflow-x-auto relative min-h-[400px] flex-grow">
+                        
+                        <!-- Estado Vacío Mejorado -->
+                        <div id="empty-state" class="hidden absolute inset-0 flex flex-col items-center justify-center text-center p-10 bg-white/95 z-10 backdrop-blur-sm">
+                            <i class="fas fa-cloud-upload-alt text-5xl text-gray-300 mb-4"></i>
+                            <h3 class="font-bold text-xl text-gray-800">Aún no hay registros</h3>
+                            <p class="text-sm text-gray-500 mt-2">Sube tu primer XML o crea un registro manual para empezar a gestionar tus documentos.</p>
+                        </div>
+                        
+                        <div id="table-container" class="min-w-full inline-block align-middle">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr id="bulk-controls" class="hidden bg-blue-50/80">
+                                        <th scope="col" class="px-4 py-3 text-center border-b border-gray-200 w-12">
+                                            <input type="checkbox" id="select-all" onclick="toggleSelectAll()" class="shrink-0 border-gray-300 rounded text-blue-600 focus:ring-blue-500">
+                                        </th>
+                                        <th scope="col" colspan="7" class="px-4 py-3 text-start text-xs font-bold text-blue-800 border-b border-gray-200">
+                                            <span id="selected-count">0</span> seleccionados
+                                        </th>
+                                    </tr>
+                                    <tr>
+                                        <th scope="col" class="px-4 py-3 text-center border-b border-gray-200 w-12"></th>
+                                        <th scope="col" class="px-4 py-3 text-start text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200 w-24">Origen</th>
+                                        <th scope="col" class="px-4 py-3 text-start text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200">Datos Entidad</th>
+                                        <th scope="col" class="px-4 py-3 text-end text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200 w-24">Importe Total</th>
+                                        <th scope="col" class="px-4 py-3 text-start text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200">Logística</th>
+                                        <th scope="col" class="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200 w-32">Estado</th>
+                                        <th scope="col" class="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200 w-32">Fecha estimada de pago</th>
+                                        <th scope="col" class="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200 w-32">Documentos</th>
+                                        <th scope="col" class="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200 w-24">Config</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="data-table" class="divide-y divide-gray-200 text-sm text-gray-700 bg-white"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            </div>
+          </div>
+          <div id="segment-2" role="tabpanel" aria-labelledby="segment-item-2" class="hidden h-full">
             <!-- NUEVO CONTENIDO PARA PROVEEDORES (Inicialmente oculto) -->
-            <div id="providers-content-view" class="hidden xl:col-span-5 flex-col h-full">
+            <div class="flex-col h-full">
                 <div class="bg-white p-4 shadow rounded-t-lg border-b-2 border-gray-200">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-2xl font-black text-black leading-tight">GESTIÓN DE PROVEEDORES</h2>
-                        <button onclick="openCreateProviderModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-sm font-bold transition"><i class="fas fa-plus mr-1"></i> Nuevo Proveedor</button>
+                        <button onclick="openCreateProviderModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-sm font-bold transition" data-hs-overlay="#create-provider-modal"><i class="fas fa-plus mr-1"></i> Nuevo Proveedor</button>
+                    </div>
                 </div>
-        </div>
                 <div class="bg-white shadow rounded-b-lg overflow-hidden flex-grow">
                     <div class="overflow-x-auto h-full">
                         <table class="w-full text-left text-base">
                             <thead class="bg-gray-200 text-gray-800 uppercase tracking-wider text-xs">
                                 <tr>
-                                    <th class="p-3 border-b border-gray-300">Nombre / RFC</th>
-                                    <th class="p-3 border-b border-gray-300">Datos Bancarios</th>
-                                    <th class="p-3 border-b border-gray-300">Expediente</th>
-                                    <th class="p-3 border-b border-gray-300">Campo Libre</th>
-                                    <th class="p-3 border-b border-gray-300 text-center w-24">Config</th>
+                                    <th class="p-3 border-b border-gray-300 w-[20%]">Nombre / RFC</th>
+                                    <th class="p-3 border-b border-gray-300 w-[25%]">Datos Bancarios</th>
+                                    <th class="p-3 border-b border-gray-300 w-[25%]">Expediente</th>
+                                    <th class="p-3 border-b border-gray-300 w-[20%]">Comentarios / % Pago</th>
+                                    <th class="p-3 border-b border-gray-300 text-center w-[10%]">Config</th>
                                 </tr>
                             </thead>
                             <tbody id="providers-table" class="text-gray-700 font-medium text-sm"></tbody>
                         </table>
+                    </div>
                 </div>
             </div>
-            </div>
-
-            <!-- NUEVO CONTENIDO PARA INDICADORES (Inicialmente oculto) -->
-            <div id="indicators-content-view" class="hidden xl:col-span-5 flex-col h-full">
-                <div class="bg-white p-6 shadow rounded-lg border-l-4 border-purple-500 flex-grow flex items-center justify-center h-full">
-                    <div class="text-center">
-                        <i class="fas fa-chart-line text-6xl text-purple-300 mb-4"></i>
-                        <h3 class="font-bold text-xl text-gray-700">Dashboard de Indicadores</h3>
-                        <p class="text-sm text-gray-500">Esta sección contendrá gráficos y métricas avanzadas por proveedor, fechas y centros de costo. ¡Próximamente!</p>
-            </div>
+          </div>
         </div>
     </div>
-                        </div>
-                        </div>
 
     <!-- Modal Edición -->
-    <div id="edit-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-        <div class="bg-white p-6 rounded-lg shadow-2xl w-[500px] border-t-8 border-black max-h-[90vh] overflow-y-auto">
-            <h2 class="font-black text-xl mb-4 uppercase">Editar Registro</h2>
-            <input type="hidden" id="edit-id">
-            <div class="space-y-3">
-                <div>
-                    <label for="edit-rfc" class="block text-xs font-bold text-gray-600 mb-1">RFC del Beneficiario</label>
-                    <input type="text" id="edit-rfc" class="w-full border p-2 rounded text-sm">
-                </div>
-                <div>
-                    <label for="edit-nombre" class="block text-xs font-bold text-gray-600 mb-1">Nombre del Beneficiario</label>
-                    <input type="text" id="edit-nombre" class="w-full border p-2 rounded text-sm">
-                </div>
-                <div>
-                    <label for="edit-total" class="block text-xs font-bold text-gray-600 mb-1">Importe Total</label>
-                    <input type="number" step="0.01" id="edit-total" class="w-full border p-2 rounded text-sm">
-                </div>
-                <div>
-                    <label for="edit-folio" class="block text-xs font-bold text-gray-600 mb-1">Folio / Referencia</label>
-                    <input type="text" id="edit-folio" class="w-full border p-2 rounded text-sm">
-                </div>
-                <div class="grid grid-cols-2 gap-3">
-                     <div>
-                        <label for="edit-fecha" class="block text-xs font-bold text-gray-600 mb-1">Fecha de Pago</label>
-                        <input type="date" id="edit-fecha" class="w-full border p-2 rounded text-sm">
+    <div id="edit-modal" class="hidden fixed inset-0 bg-gray-900/80 backdrop-blur-sm flex items-center justify-center z-[1050] p-4 sm:p-0 transition-all">
+        <div class="bg-white rounded-xl shadow-lg border border-gray-200 w-full max-w-lg flex flex-col max-h-[90vh]">
+            <div class="flex justify-between items-center py-3 px-4 border-b border-gray-200 bg-gray-50 rounded-t-xl">
+                <h2 class="font-black text-lg text-gray-800 uppercase">Editar Registro</h2>
+                <button type="button" onclick="document.getElementById('edit-modal').classList.add('hidden')" data-hs-overlay="#edit-modal" class="size-8 inline-flex justify-center items-center gap-x-2 rounded-full border border-transparent bg-gray-100 text-gray-800 hover:bg-gray-200 focus:outline-none focus:bg-gray-200 transition">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-4 overflow-y-auto">
+                <input type="hidden" id="edit-id">
+                <div class="space-y-4">
+                    <div id="edit-porcentaje-pago-container" class="hidden">
+                        <label for="edit-porcentaje-pago" class="block text-xs font-bold text-gray-700 mb-1 uppercase">Porcentaje de Pago</label>
+                        <input type="number" step="0.01" id="edit-porcentaje-pago" class="py-2 px-3 block w-full border border-gray-200 rounded-lg text-sm focus:border-black focus:ring-black shadow-sm" placeholder="100.00">
                     </div>
                     <div>
-                        <label for="edit-moneda" class="block text-xs font-bold text-gray-600 mb-1">Moneda</label>
-                        <select id="edit-moneda" class="w-full border p-2 rounded text-sm">
-                            <option value="MXN">MXN</option>
-                            <option value="USD">USD</option>
-                            <option value="EUR">EUR</option>
+                        <label for="edit-rfc" class="block text-xs font-bold text-gray-700 mb-1 uppercase">RFC del Beneficiario</label>
+                        <input type="text" id="edit-rfc" class="py-2 px-3 block w-full border border-gray-200 rounded-lg text-sm focus:border-black focus:ring-black shadow-sm">
+                    </div>
+                    <div>
+                        <label for="edit-nombre" class="block text-xs font-bold text-gray-700 mb-1 uppercase">Nombre del Beneficiario</label>
+                        <input type="text" id="edit-nombre" class="py-2 px-3 block w-full border border-gray-200 rounded-lg text-sm focus:border-black focus:ring-black shadow-sm">
+                    </div>
+                    <div>
+                        <label for="edit-total" class="block text-xs font-bold text-gray-700 mb-1 uppercase">Importe Total</label>
+                        <input type="number" step="0.01" id="edit-total" class="py-2 px-3 block w-full border border-gray-200 rounded-lg text-sm focus:border-black focus:ring-black shadow-sm">
+                    </div>
+                    <div>
+                        <label for="edit-folio" class="block text-xs font-bold text-gray-700 mb-1 uppercase">Folio / Referencia</label>
+                        <input type="text" id="edit-folio" class="py-2 px-3 block w-full border border-gray-200 rounded-lg text-sm focus:border-black focus:ring-black shadow-sm">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                         <div>
+                            <label for="edit-fecha" class="block text-xs font-bold text-gray-700 mb-1 uppercase">Fecha de Pago</label>
+                            <input type="date" id="edit-fecha" class="py-2 px-3 block w-full border border-gray-200 rounded-lg text-sm focus:border-black focus:ring-black shadow-sm">
+                        </div>
+                        <div>
+                            <label for="edit-moneda" class="block text-xs font-bold text-gray-700 mb-1 uppercase">Moneda</label>
+                            <select id="edit-moneda" class="py-2 px-3 block w-full border border-gray-200 rounded-lg text-sm focus:border-black focus:ring-black shadow-sm">
+                                <option value="MXN">MXN</option>
+                                <option value="USD">USD</option>
+                                <option value="EUR">EUR</option>
+                            </select>
+                        </div>
+                    </div>
+                     <div>
+                        <label for="edit-comentarios" class="block text-xs font-bold text-gray-700 mb-1 uppercase">Comentarios</label>
+                        <textarea id="edit-comentarios" class="py-2 px-3 block w-full border border-gray-200 rounded-lg text-sm focus:border-black focus:ring-black shadow-sm h-20"></textarea>
+                    </div>
+
+                    <!-- Asignación Dinámica de Centros de Costo - EDICIÓN -->
+                    <div class="border border-gray-200 rounded-xl p-4 bg-gray-50 shadow-sm">
+                        <label class="block text-xs font-black text-gray-800 uppercase mb-3">Asignación de Centros de Costo</label>
+                        <div id="edit-centros-container" class="space-y-3"></div>
+                        <div class="mt-4 flex justify-between items-center border-t border-gray-200 pt-3">
+                            <button type="button" id="btn-agregar-centro-edit" onclick="agregarCentroEdit()" class="py-1.5 px-3 inline-flex items-center gap-x-1 text-xs font-bold rounded-lg border border-transparent bg-green-500 text-white hover:bg-green-600 transition-all shadow-sm">
+                                <i class="fas fa-plus"></i> Agregar
+                            </button>
+                            <span id="edit-total-porcentaje" class="text-sm font-black">Total: 0%</span>
+                        </div>
+                    </div>
+
+                    <!-- Sección Condicional para Refacciones -->
+                    <div id="edit-refacciones-section" class="hidden space-y-4 bg-white border border-gray-200 rounded-xl p-4 shadow-sm mt-4">
+                        <label class="block text-xs font-black text-gray-800 uppercase border-b pb-2">Detalles de Refacción</label>
+                        <select id="edit-naturaleza" class="py-2 px-3 block w-full border border-gray-200 rounded-lg text-sm focus:border-black focus:ring-black shadow-sm">
+                            <option value="">-- Naturaleza --</option>
+                            <option value="Venta">Venta</option>
+                            <option value="Costo de venta">Costo de venta</option>
+                            <option value="Garantía">Garantía</option>
                         </select>
+                        <div>
+                            <label for="edit-cliente" class="block text-xs font-bold text-gray-700 mb-1 uppercase">Cliente</label>
+                            <input type="text" id="edit-cliente" class="py-2 px-3 block w-full border border-gray-200 rounded-lg text-sm focus:border-black focus:ring-black shadow-sm">
+                        </div>
+                        <div>
+                            <label for="edit-modelo" class="block text-xs font-bold text-gray-700 mb-1 uppercase">Modelo de Máquina</label>
+                            <input type="text" id="edit-modelo" class="py-2 px-3 block w-full border border-gray-200 rounded-lg text-sm focus:border-black focus:ring-black shadow-sm">
+                        </div>
+                        <div>
+                            <label for="edit-serie" class="block text-xs font-bold text-gray-700 mb-1 uppercase">No. de Serie</label>
+                            <input type="text" id="edit-serie" class="py-2 px-3 block w-full border border-gray-200 rounded-lg text-sm focus:border-black focus:ring-black shadow-sm">
+                        </div>
                     </div>
                 </div>
-                 <div>
-                    <label for="edit-comentarios" class="block text-xs font-bold text-gray-600 mb-1">Comentarios</label>
-                    <textarea id="edit-comentarios" class="w-full border p-2 rounded text-sm h-20"></textarea>
-                </div>
-
-                <!-- Asignación Dinámica de Centros de Costo - EDICIÓN -->
-                                <div class="border-2 border-gray-300 rounded p-3 bg-gray-50">
-                                    <label class="block text-xs font-bold text-gray-700 uppercase mb-2">Asignación de Centros de Costo</label>
-                                    <div id="edit-centros-container" class="space-y-2"></div>
-                                    <div class="mt-2 flex justify-between items-center">
-                                        <button type="button" id="btn-agregar-centro-edit" onclick="agregarCentroEdit()" class="text-xs bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded font-bold transition">
-                                            <i class="fas fa-plus mr-1"></i> Agregar Centro
-                                        </button>
-                                        <span id="edit-total-porcentaje" class="text-sm font-bold">Total: 0%</span>
-                                    </div>
-                                </div>
-
-                                <!-- Sección Condicional para REFACCIONES -->
-                                <div id="edit-refacciones-section" class="hidden space-y-3 bg-gray-50 border-gray-200 border-2 rounded p-4 mt-3">
-                                    <label class="block text-xs font-bold text-gray-700 uppercase">Detalles de Refacción</label>
-                                    <select id="edit-naturaleza" class="w-full border p-2 rounded text-sm">
-                                        <option value="">-- Naturaleza --</option>
-                                        <option value="Venta">Venta</option>
-                                        <option value="Costo de venta">Costo de venta</option>
-                                        <option value="Garantía">Garantía</option>
-                                    </select>
-                                    <div>
-                                        <label for="edit-cliente" class="block text-xs font-bold text-gray-600 mb-1">Cliente</label>
-                                        <input type="text" id="edit-cliente" class="w-full border p-2 rounded text-sm">
-                                    </div>
-                                    <div>
-                                        <label for="edit-modelo" class="block text-xs font-bold text-gray-600 mb-1">Modelo de Máquina</label>
-                                        <input type="text" id="edit-modelo" class="w-full border p-2 rounded text-sm">
-                                    </div>
-                                    <div>
-                                        <label for="edit-serie" class="block text-xs font-bold text-gray-600 mb-1">No. de Serie</label>
-                                        <input type="text" id="edit-serie" class="w-full border p-2 rounded text-sm">
-                                    </div>
-                                </div>
             </div>
-            <div class="flex justify-end mt-6 space-x-3">
-                <button onclick="document.getElementById('edit-modal').classList.add('hidden')" class="px-4 py-2 bg-gray-200 font-bold rounded text-sm">Cancelar</button>
-                <button onclick="saveEdit()" class="px-4 py-2 bg-black text-white font-bold rounded text-sm">Guardar</button>
+            <div class="flex justify-end items-center gap-x-2 py-3 px-4 border-t border-gray-200 bg-gray-50 rounded-b-xl">
+                <button type="button" onclick="document.getElementById('edit-modal').classList.add('hidden')" data-hs-overlay="#edit-modal" class="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-bold rounded-lg border border-gray-200 bg-white text-gray-800 shadow-sm hover:bg-gray-50 transition-all">Cancelar</button>
+                <button onclick="saveEdit()" class="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-bold rounded-lg border border-transparent bg-black text-white hover:bg-gray-800 shadow-sm transition-all">Guardar Cambios</button>
             </div>
         </div>
     </div>
 
     <!-- Modal Registro Manual -->
-    <div id="manual-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-        <div class="bg-white p-6 rounded-lg shadow-2xl w-[500px] border-t-8 border-black max-h-[90vh] overflow-y-auto">
-            <h2 class="font-black text-xl mb-4 uppercase">Registro Manual</h2>
-            <div class="space-y-3">
-                <div>
-                    <label for="man-rfc" class="block text-xs font-bold text-gray-600 mb-1">RFC del Beneficiario</label>
-                    <input type="text" id="man-rfc" class="w-full border p-2 rounded text-sm">
-                </div>
-                <div>
-                    <label for="man-nombre" class="block text-xs font-bold text-gray-600 mb-1">Nombre del Beneficiario</label>
-                    <input type="text" id="man-nombre" class="w-full border p-2 rounded text-sm">
-                </div>
-                <div>
-                    <label for="man-total" class="block text-xs font-bold text-gray-600 mb-1">Importe Total</label>
-                    <input type="number" step="0.01" id="man-total" class="w-full border p-2 rounded text-sm">
-                </div>
-                <div>
-                    <label for="man-folio" class="block text-xs font-bold text-gray-600 mb-1">Folio / Referencia</label>
-                    <input type="text" id="man-folio" class="w-full border p-2 rounded text-sm">
-                </div>
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label for="man-fecha" class="block text-xs font-bold text-gray-600 mb-1">Fecha de Pago</label>
-                        <input type="date" id="man-fecha" class="w-full border p-2 rounded text-sm">
-                    </div>
-                    <div>
-                        <label for="man-moneda" class="block text-xs font-bold text-gray-600 mb-1">Moneda</label>
-                        <select id="man-moneda" class="w-full border p-2 rounded text-sm">
-                            <option value="MXN">MXN</option>
-                            <option value="USD">USD</option>
-                            <option value="EUR">EUR</option>
-                        </select>
-                    </div>
-                </div>
-                <div>
-                    <label for="man-comentarios" class="block text-xs font-bold text-gray-600 mb-1">Comentarios</label>
-                    <textarea id="man-comentarios" class="w-full border p-2 rounded text-sm h-20"></textarea>
-                </div>
-
-                <!-- Asignación Dinámica de Centros de Costo - MANUAL -->
-                                <div class="border-2 border-gray-300 rounded p-3 bg-gray-50">
-                                    <label class="block text-xs font-bold text-gray-700 uppercase mb-2">Asignación de Centros de Costo</label>
-                                    <div id="man-centros-container" class="space-y-2"></div>
-                                    <div class="mt-2 flex justify-between items-center">
-                                        <button type="button" id="btn-agregar-centro-manual" onclick="agregarCentroManual()" class="text-xs bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded font-bold transition">
-                                            <i class="fas fa-plus mr-1"></i> Agregar Centro
-                                        </button>
-                                        <span id="man-total-porcentaje" class="text-sm font-bold">Total: 0%</span>
-                                    </div>
-                                </div>
-
-                                <!-- Sección Condicional para REFACCIONES -->
-                                <div id="man-refacciones-section" class="hidden space-y-3 bg-gray-50 border-gray-200 border-2 rounded p-4 mt-3">
-                                    <label class="block text-xs font-bold text-gray-700 uppercase">Detalles de Refacción</label>
-                                    <select id="man-naturaleza" class="w-full border p-2 rounded text-sm">
-                                        <option value="">-- Naturaleza --</option>
-                                        <option value="Venta">Venta</option>
-                                        <option value="Costo de venta">Costo de venta</option>
-                                        <option value="Garantía">Garantía</option>
-                                    </select>
-                                    <div>
-                                        <label for="man-cliente" class="block text-xs font-bold text-gray-600 mb-1">Cliente</label>
-                                        <input type="text" id="man-cliente" class="w-full border p-2 rounded text-sm">
-                                    </div>
-                                    <div>
-                                        <label for="man-modelo" class="block text-xs font-bold text-gray-600 mb-1">Modelo de Máquina</label>
-                                        <input type="text" id="man-modelo" class="w-full border p-2 rounded text-sm">
-                                    </div>
-                                    <div>
-                                        <label for="man-serie" class="block text-xs font-bold text-gray-600 mb-1">No. de Serie</label>
-                                        <input type="text" id="man-serie" class="w-full border p-2 rounded text-sm">
-                                    </div>
-                                </div>
+    <div id="manual-modal" class="hidden fixed inset-0 bg-gray-900/80 backdrop-blur-sm flex items-center justify-center z-[1050] p-4 sm:p-0 transition-all">
+        <div class="bg-white rounded-xl shadow-lg border border-gray-200 w-full max-w-lg flex flex-col max-h-[90vh]">
+            <div class="flex justify-between items-center py-3 px-4 border-b border-gray-200 bg-gray-50 rounded-t-xl">
+                <h2 class="font-black text-lg text-gray-800 uppercase">Registro Manual</h2>
+                <button type="button" onclick="document.getElementById('manual-modal').classList.add('hidden')" data-hs-overlay="#manual-modal" class="size-8 inline-flex justify-center items-center gap-x-2 rounded-full border border-transparent bg-gray-100 text-gray-800 hover:bg-gray-200 focus:outline-none focus:bg-gray-200 transition">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
-            <div class="flex justify-end mt-6">
-                <button onclick="document.getElementById('manual-modal').classList.add('hidden')" class="px-4 py-2 bg-gray-200 mr-3 rounded font-bold text-sm">Cancelar</button>
-                <button onclick="saveManual()" class="px-4 py-2 bg-black text-white rounded font-bold text-sm">Registrar</button>
+            <div class="p-4 overflow-y-auto">
+                <div class="space-y-4">
+                    <div id="man-porcentaje-pago-container" class="hidden">
+                        <label for="man-porcentaje-pago" class="block text-xs font-bold text-gray-700 mb-1 uppercase">Porcentaje de Pago</label>
+                        <input type="number" step="0.01" id="man-porcentaje-pago" class="py-2 px-3 block w-full border border-gray-200 rounded-lg text-sm focus:border-black focus:ring-black shadow-sm" placeholder="100.00">
+                    </div>
+                    <div>
+                        <label for="man-rfc" class="block text-xs font-bold text-gray-700 mb-1 uppercase">RFC del Beneficiario</label>
+                        <input type="text" id="man-rfc" class="py-2 px-3 block w-full border border-gray-200 rounded-lg text-sm focus:border-black focus:ring-black shadow-sm">
+                    </div>
+                    <div>
+                        <label for="man-nombre" class="block text-xs font-bold text-gray-700 mb-1 uppercase">Nombre del Beneficiario</label>
+                        <input type="text" id="man-nombre" class="py-2 px-3 block w-full border border-gray-200 rounded-lg text-sm focus:border-black focus:ring-black shadow-sm">
+                    </div>
+                    <div>
+                        <label for="man-total" class="block text-xs font-bold text-gray-700 mb-1 uppercase">Importe Total</label>
+                        <input type="number" step="0.01" id="man-total" class="py-2 px-3 block w-full border border-gray-200 rounded-lg text-sm focus:border-black focus:ring-black shadow-sm">
+                    </div>
+                    <div>
+                        <label for="man-folio" class="block text-xs font-bold text-gray-700 mb-1 uppercase">Folio / Referencia</label>
+                        <input type="text" id="man-folio" class="py-2 px-3 block w-full border border-gray-200 rounded-lg text-sm focus:border-black focus:ring-black shadow-sm">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="man-fecha" class="block text-xs font-bold text-gray-700 mb-1 uppercase">Fecha de Pago</label>
+                            <input type="date" id="man-fecha" class="py-2 px-3 block w-full border border-gray-200 rounded-lg text-sm focus:border-black focus:ring-black shadow-sm">
+                        </div>
+                        <div>
+                            <label for="man-moneda" class="block text-xs font-bold text-gray-700 mb-1 uppercase">Moneda</label>
+                            <select id="man-moneda" class="py-2 px-3 block w-full border border-gray-200 rounded-lg text-sm focus:border-black focus:ring-black shadow-sm">
+                                <option value="MXN">MXN</option>
+                                <option value="USD">USD</option>
+                                <option value="EUR">EUR</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label for="man-comentarios" class="block text-xs font-bold text-gray-700 mb-1 uppercase">Comentarios</label>
+                        <textarea id="man-comentarios" class="py-2 px-3 block w-full border border-gray-200 rounded-lg text-sm focus:border-black focus:ring-black shadow-sm h-20"></textarea>
+                    </div>
+
+                    <!-- Asignación Dinámica de Centros de Costo - MANUAL -->
+                    <div class="border border-gray-200 rounded-xl p-4 bg-gray-50 shadow-sm">
+                        <label class="block text-xs font-black text-gray-800 uppercase mb-3">Asignación de Centros de Costo</label>
+                        <div id="man-centros-container" class="space-y-3"></div>
+                        <div class="mt-4 flex justify-between items-center border-t border-gray-200 pt-3">
+                            <button type="button" id="btn-agregar-centro-manual" onclick="agregarCentroManual()" class="py-1.5 px-3 inline-flex items-center gap-x-1 text-xs font-bold rounded-lg border border-transparent bg-green-500 text-white hover:bg-green-600 transition-all shadow-sm">
+                                <i class="fas fa-plus"></i> Agregar
+                            </button>
+                            <span id="man-total-porcentaje" class="text-sm font-black">Total: 0%</span>
+                        </div>
+                    </div>
+
+                    <!-- Sección Condicional para Refacciones -->
+                    <div id="man-refacciones-section" class="hidden space-y-4 bg-white border border-gray-200 rounded-xl p-4 shadow-sm mt-4">
+                        <label class="block text-xs font-black text-gray-800 uppercase border-b pb-2">Detalles de Refacción</label>
+                        <select id="man-naturaleza" class="py-2 px-3 block w-full border border-gray-200 rounded-lg text-sm focus:border-black focus:ring-black shadow-sm">
+                            <option value="">-- Naturaleza --</option>
+                            <option value="Venta">Venta</option>
+                            <option value="Costo de venta">Costo de venta</option>
+                            <option value="Garantía">Garantía</option>
+                        </select>
+                        <div>
+                            <label for="man-cliente" class="block text-xs font-bold text-gray-700 mb-1 uppercase">Cliente</label>
+                            <input type="text" id="man-cliente" class="py-2 px-3 block w-full border border-gray-200 rounded-lg text-sm focus:border-black focus:ring-black shadow-sm">
+                        </div>
+                        <div>
+                            <label for="man-modelo" class="block text-xs font-bold text-gray-700 mb-1 uppercase">Modelo de Máquina</label>
+                            <input type="text" id="man-modelo" class="py-2 px-3 block w-full border border-gray-200 rounded-lg text-sm focus:border-black focus:ring-black shadow-sm">
+                        </div>
+                        <div>
+                            <label for="man-serie" class="block text-xs font-bold text-gray-700 mb-1 uppercase">No. de Serie</label>
+                            <input type="text" id="man-serie" class="py-2 px-3 block w-full border border-gray-200 rounded-lg text-sm focus:border-black focus:ring-black shadow-sm">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-end items-center gap-x-2 py-3 px-4 border-t border-gray-200 bg-gray-50 rounded-b-xl">
+                <button type="button" onclick="document.getElementById('manual-modal').classList.add('hidden')" data-hs-overlay="#manual-modal" class="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-bold rounded-lg border border-gray-200 bg-white text-gray-800 shadow-sm hover:bg-gray-50 transition-all">Cancelar</button>
+                <button onclick="saveManual()" class="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-bold rounded-lg border border-transparent bg-black text-white hover:bg-gray-800 shadow-sm transition-all">Registrar</button>
             </div>
         </div>
     </div>
 
     <!-- Modal para Crear Proveedor -->
-    <div id="create-provider-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-        <div class="bg-white p-6 rounded-lg shadow-2xl w-[500px] border-t-8 border-blue-600 max-h-[90vh] overflow-y-auto">
-            <h2 class="font-black text-xl mb-4 uppercase">Registrar Nuevo Proveedor</h2>
-            <div class="space-y-3">
-                <div><label for="create-provider-nombre" class="block text-xs font-bold text-gray-600 mb-1">Nombre del Proveedor</label><input type="text" id="create-provider-nombre" class="w-full border p-2 rounded text-sm"></div>
-                <div><label for="create-provider-rfc" class="block text-xs font-bold text-gray-600 mb-1">RFC del Proveedor</label><input type="text" id="create-provider-rfc" class="w-full border p-2 rounded text-sm uppercase"></div>
-                <div><label for="create-provider-banco" class="block text-xs font-bold text-gray-600 mb-1">Banco</label><input type="text" id="create-provider-banco" class="w-full border p-2 rounded text-sm"></div>
-                <div><label for="create-provider-cuenta" class="block text-xs font-bold text-gray-600 mb-1">Número de Cuenta / CLABE</label><input type="text" id="create-provider-cuenta" class="w-full border p-2 rounded text-sm"></div>
-                <div><label for="create-provider-tipo-operacion" class="block text-xs font-bold text-gray-600 mb-1">Tipo de Operación</label><select id="create-provider-tipo-operacion" class="w-full border p-2 rounded text-sm"><option value="">-- Seleccionar --</option><option value="Convenio CIE">Convenio CIE</option><option value="Interbancario">Interbancario</option><option value="Mismo Banco">Mismo Banco</option></select></div>
-                <div><label for="create-provider-expediente" class="block text-xs font-bold text-gray-600 mb-1">Información de Expediente (Documentos, Contratos)</label><textarea id="create-provider-expediente" class="w-full border p-2 rounded text-sm h-20"></textarea></div>
-                <div><label for="create-provider-campo-libre" class="block text-xs font-bold text-gray-600 mb-1">Notas / Campo Libre</label><textarea id="create-provider-campo-libre" class="w-full border p-2 rounded text-sm h-20"></textarea></div>
+    <div id="create-provider-modal" class="hidden fixed inset-0 bg-gray-900/80 backdrop-blur-sm flex items-center justify-center z-[1050] p-4 sm:p-0 transition-all">
+        <div class="bg-white rounded-xl shadow-lg border border-gray-200 w-full max-w-lg flex flex-col max-h-[90vh]">
+            <div class="flex justify-between items-center py-3 px-4 border-b border-gray-200 bg-blue-50 rounded-t-xl">
+                <h2 class="font-black text-lg text-blue-800 uppercase">Registrar Nuevo Proveedor</h2>
+                <button type="button" onclick="document.getElementById('create-provider-modal').classList.add('hidden')" data-hs-overlay="#create-provider-modal" class="size-8 inline-flex justify-center items-center gap-x-2 rounded-full border border-transparent bg-white text-blue-800 hover:bg-blue-100 focus:outline-none transition">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
-            <div class="flex justify-end mt-6 space-x-3">
-                <button onclick="document.getElementById('create-provider-modal').classList.add('hidden')" class="px-4 py-2 bg-gray-200 font-bold rounded text-sm">Cancelar</button>
-                <button onclick="saveNewProvider()" class="px-4 py-2 bg-blue-600 text-white font-bold rounded text-sm">Guardar Proveedor</button>
+            <div class="p-4 overflow-y-auto">
+                <div class="space-y-4">
+                    <div><label for="create-provider-nombre" class="block text-xs font-bold text-gray-700 mb-1 uppercase">Nombre del Proveedor</label><input type="text" id="create-provider-nombre" class="py-2 px-3 block w-full border border-gray-200 rounded-lg text-sm focus:border-blue-600 focus:ring-blue-600 shadow-sm"></div>
+                    <div><label for="create-provider-rfc" class="block text-xs font-bold text-gray-700 mb-1 uppercase">RFC del Proveedor</label><input type="text" id="create-provider-rfc" class="py-2 px-3 block w-full border border-gray-200 rounded-lg text-sm focus:border-blue-600 focus:ring-blue-600 shadow-sm uppercase"></div>
+                    <div><label for="create-provider-banco" class="block text-xs font-bold text-gray-700 mb-1 uppercase">Banco</label><input type="text" id="create-provider-banco" class="py-2 px-3 block w-full border border-gray-200 rounded-lg text-sm focus:border-blue-600 focus:ring-blue-600 shadow-sm"></div>
+                    <div><label for="create-provider-cuenta" class="block text-xs font-bold text-gray-700 mb-1 uppercase">Número de Cuenta / CLABE</label><input type="text" id="create-provider-cuenta" class="py-2 px-3 block w-full border border-gray-200 rounded-lg text-sm focus:border-blue-600 focus:ring-blue-600 shadow-sm"></div>
+                    <div><label for="create-provider-tipo-operacion" class="block text-xs font-bold text-gray-700 mb-1 uppercase">Tipo de Operación</label><select id="create-provider-tipo-operacion" class="py-2 px-3 block w-full border border-gray-200 rounded-lg text-sm focus:border-blue-600 focus:ring-blue-600 shadow-sm"><option value="">-- Seleccionar --</option><option value="Convenio CIE">Convenio CIE</option><option value="Interbancario">Interbancario</option><option value="Mismo Banco">Mismo Banco</option></select></div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-2 uppercase">Expediente (Documentos)</label>
+                        <div class="space-y-2 border border-gray-200 rounded-lg p-3 bg-gray-50 max-h-40 overflow-y-auto">
+                            <label class="flex items-center space-x-2 text-sm"><input type="checkbox" class="create-expediente-chk text-blue-600 focus:ring-blue-500 rounded border-gray-300" value="Constancia de situación fiscal"> <span>Constancia de situación fiscal</span></label>
+                            <label class="flex items-center space-x-2 text-sm"><input type="checkbox" class="create-expediente-chk text-blue-600 focus:ring-blue-500 rounded border-gray-300" value="Comprobante de domicilio"> <span>Comprobante de domicilio</span></label>
+                            <label class="flex items-center space-x-2 text-sm"><input type="checkbox" class="create-expediente-chk text-blue-600 focus:ring-blue-500 rounded border-gray-300" value="Identificación oficial"> <span>Identificación oficial</span></label>
+                            <label class="flex items-center space-x-2 text-sm"><input type="checkbox" class="create-expediente-chk text-blue-600 focus:ring-blue-500 rounded border-gray-300" value="Estado de cuenta bancario"> <span>Estado de cuenta bancario</span></label>
+                            <label class="flex items-center space-x-2 text-sm"><input type="checkbox" class="create-expediente-chk text-blue-600 focus:ring-blue-500 rounded border-gray-300" value="Opinión de cumplimiento"> <span>Opinión de cumplimiento</span></label>
+                        </div>
+                    </div>
+                    <div><label for="create-provider-campo-libre" class="block text-xs font-bold text-gray-700 mb-1 uppercase">Notas / Campo Libre</label><textarea id="create-provider-campo-libre" class="py-2 px-3 block w-full border border-gray-200 rounded-lg text-sm focus:border-blue-600 focus:ring-blue-600 shadow-sm h-20"></textarea></div>
+                    <div><label for="create-provider-email" class="block text-xs font-bold text-gray-700 mb-1 uppercase">Email de Contacto</label><input type="email" id="create-provider-email" class="py-2 px-3 block w-full border border-gray-200 rounded-lg text-sm focus:border-blue-600 focus:ring-blue-600 shadow-sm"></div>
+                </div>
+            </div>
+            <div class="flex justify-end items-center gap-x-2 py-3 px-4 border-t border-gray-200 bg-gray-50 rounded-b-xl">
+                <button type="button" onclick="document.getElementById('create-provider-modal').classList.add('hidden')" data-hs-overlay="#create-provider-modal" class="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-bold rounded-lg border border-gray-200 bg-white text-gray-800 shadow-sm hover:bg-gray-50 transition-all">Cancelar</button>
+                <button onclick="saveNewProvider()" class="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-bold rounded-lg border border-transparent bg-blue-600 text-white hover:bg-blue-700 shadow-sm transition-all">Guardar Proveedor</button>
             </div>
         </div>
     </div>
 
     <!-- Modal para Editar Proveedor -->
-    <div id="edit-provider-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-        <div class="bg-white p-6 rounded-lg shadow-2xl w-[500px] border-t-8 border-blue-600 max-h-[90vh] overflow-y-auto">
-            <h2 class="font-black text-xl mb-4 uppercase">Editar Proveedor</h2>
-            <div class="space-y-3">
-                <div><label for="edit-provider-nombre" class="block text-xs font-bold text-gray-600 mb-1">Nombre del Proveedor</label><input type="text" id="edit-provider-nombre" class="w-full border p-2 rounded text-sm"></div>
-                <div><label for="edit-provider-rfc" class="block text-xs font-bold text-gray-600 mb-1">RFC del Proveedor</label><input type="text" id="edit-provider-rfc" readonly class="w-full border p-2 rounded text-sm bg-gray-100 cursor-not-allowed"></div>
-                <div><label for="edit-provider-banco" class="block text-xs font-bold text-gray-600 mb-1">Banco</label><input type="text" id="edit-provider-banco" class="w-full border p-2 rounded text-sm"></div>
-                <div><label for="edit-provider-cuenta" class="block text-xs font-bold text-gray-600 mb-1">Número de Cuenta / CLABE</label><input type="text" id="edit-provider-cuenta" class="w-full border p-2 rounded text-sm"></div>
-                <div><label for="edit-provider-tipo-operacion" class="block text-xs font-bold text-gray-600 mb-1">Tipo de Operación</label><select id="edit-provider-tipo-operacion" class="w-full border p-2 rounded text-sm"><option value="">-- Seleccionar --</option><option value="Convenio CIE">Convenio CIE</option><option value="Interbancario">Interbancario</option><option value="Mismo Banco">Mismo Banco</option></select></div>
-                <div id="edit-provider-validation-controls" class="pt-2 border-t mt-4">
-                    <div class="flex justify-around items-center text-sm">
-                        <div class="text-center"><span class="font-bold text-gray-600">Val. Bancaria:</span> <span id="edit-provider-bancaria-status" class="text-lg"></span></div>
-                        <div class="text-center"><span class="font-bold text-gray-600">Val. Expediente:</span> <span id="edit-provider-expediente-status" class="text-lg"></span></div>
-                    </div>
-                </div>
-                <div><label for="edit-provider-expediente" class="block text-xs font-bold text-gray-600 mb-1">Información de Expediente (Documentos, Contratos)</label><textarea id="edit-provider-expediente" class="w-full border p-2 rounded text-sm h-20"></textarea></div>
-                <div><label for="edit-provider-campo-libre" class="block text-xs font-bold text-gray-600 mb-1">Notas / Campo Libre</label><textarea id="edit-provider-campo-libre" class="w-full border p-2 rounded text-sm h-20"></textarea></div>
+    <div id="edit-provider-modal" class="hidden fixed inset-0 bg-gray-900/80 backdrop-blur-sm flex items-center justify-center z-[1050] p-4 sm:p-0 transition-all">
+        <div class="bg-white rounded-xl shadow-lg border border-gray-200 w-full max-w-lg flex flex-col max-h-[90vh]">
+            <div class="flex justify-between items-center py-3 px-4 border-b border-gray-200 bg-blue-50 rounded-t-xl">
+                <h2 class="font-black text-lg text-blue-800 uppercase">Editar Proveedor</h2>
+                <button type="button" onclick="document.getElementById('edit-provider-modal').classList.add('hidden')" data-hs-overlay="#edit-provider-modal" class="size-8 inline-flex justify-center items-center gap-x-2 rounded-full border border-transparent bg-white text-blue-800 hover:bg-blue-100 focus:outline-none transition">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
-            <div class="flex justify-end mt-6 space-x-3">
-                <button onclick="document.getElementById('edit-provider-modal').classList.add('hidden')" class="px-4 py-2 bg-gray-200 font-bold rounded text-sm">Cancelar</button>
-                <button onclick="saveEditedProvider()" class="px-4 py-2 bg-blue-600 text-white font-bold rounded text-sm">Guardar Cambios</button>
+            <div class="p-4 overflow-y-auto">
+                <div class="space-y-4">
+                    <div><label for="edit-provider-nombre" class="block text-xs font-bold text-gray-700 mb-1 uppercase">Nombre del Proveedor</label><input type="text" id="edit-provider-nombre" class="py-2 px-3 block w-full border border-gray-200 rounded-lg text-sm focus:border-blue-600 focus:ring-blue-600 shadow-sm"></div>
+                    <div><label for="edit-provider-rfc" class="block text-xs font-bold text-gray-700 mb-1 uppercase">RFC del Proveedor</label><input type="text" id="edit-provider-rfc" readonly class="py-2 px-3 block w-full border border-gray-200 rounded-lg text-sm bg-gray-100 cursor-not-allowed shadow-sm opacity-70"></div>
+                    <div><label for="edit-provider-banco" class="block text-xs font-bold text-gray-700 mb-1 uppercase">Banco</label><input type="text" id="edit-provider-banco" class="py-2 px-3 block w-full border border-gray-200 rounded-lg text-sm focus:border-blue-600 focus:ring-blue-600 shadow-sm"></div>
+                    <div><label for="edit-provider-cuenta" class="block text-xs font-bold text-gray-700 mb-1 uppercase">Número de Cuenta / CLABE</label><input type="text" id="edit-provider-cuenta" class="py-2 px-3 block w-full border border-gray-200 rounded-lg text-sm focus:border-blue-600 focus:ring-blue-600 shadow-sm"></div>
+                    <div><label for="edit-provider-tipo-operacion" class="block text-xs font-bold text-gray-700 mb-1 uppercase">Tipo de Operación</label><select id="edit-provider-tipo-operacion" class="py-2 px-3 block w-full border border-gray-200 rounded-lg text-sm focus:border-blue-600 focus:ring-blue-600 shadow-sm"><option value="">-- Seleccionar --</option><option value="Convenio CIE">Convenio CIE</option><option value="Interbancario">Interbancario</option><option value="Mismo Banco">Mismo Banco</option></select></div>
+                    
+                    <div id="edit-provider-validation-controls" class="py-3 px-4 border border-blue-200 bg-blue-50/50 rounded-xl mt-4 flex justify-around items-center text-sm shadow-sm">
+                        <div class="text-center"><span class="font-bold text-blue-900 block mb-1">Val. Bancaria:</span> <span id="edit-provider-bancaria-status" class="text-xl"></span></div>
+                        <div class="w-px h-8 bg-blue-200"></div>
+                        <div class="text-center"><span class="font-bold text-blue-900 block mb-1">Val. Expediente:</span> <span id="edit-provider-expediente-status" class="text-xl"></span></div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-2 uppercase">Expediente (Documentos)</label>
+                        <div class="space-y-2 border border-gray-200 rounded-lg p-3 bg-gray-50 max-h-40 overflow-y-auto">
+                            <label class="flex items-center space-x-2 text-sm"><input type="checkbox" class="edit-expediente-chk text-blue-600 focus:ring-blue-500 rounded border-gray-300" value="Constancia de situación fiscal"> <span>Constancia de situación fiscal</span></label>
+                            <label class="flex items-center space-x-2 text-sm"><input type="checkbox" class="edit-expediente-chk text-blue-600 focus:ring-blue-500 rounded border-gray-300" value="Comprobante de domicilio"> <span>Comprobante de domicilio</span></label>
+                            <label class="flex items-center space-x-2 text-sm"><input type="checkbox" class="edit-expediente-chk text-blue-600 focus:ring-blue-500 rounded border-gray-300" value="Identificación oficial"> <span>Identificación oficial</span></label>
+                            <label class="flex items-center space-x-2 text-sm"><input type="checkbox" class="edit-expediente-chk text-blue-600 focus:ring-blue-500 rounded border-gray-300" value="Estado de cuenta bancario"> <span>Estado de cuenta bancario</span></label>
+                            <label class="flex items-center space-x-2 text-sm"><input type="checkbox" class="edit-expediente-chk text-blue-600 focus:ring-blue-500 rounded border-gray-300" value="Opinión de cumplimiento"> <span>Opinión de cumplimiento</span></label>
+                        </div>
+                    </div>
+                    <div><label for="edit-provider-campo-libre" class="block text-xs font-bold text-gray-700 mb-1 uppercase">Notas / Campo Libre</label><textarea id="edit-provider-campo-libre" class="py-2 px-3 block w-full border border-gray-200 rounded-lg text-sm focus:border-blue-600 focus:ring-blue-600 shadow-sm h-20"></textarea></div>
+                    <div><label for="edit-provider-email" class="block text-xs font-bold text-gray-700 mb-1 uppercase">Email de Contacto</label><input type="email" id="edit-provider-email" class="py-2 px-3 block w-full border border-gray-200 rounded-lg text-sm focus:border-blue-600 focus:ring-blue-600 shadow-sm"></div>
+                </div>
+            </div>
+            <div class="flex justify-end items-center gap-x-2 py-3 px-4 border-t border-gray-200 bg-gray-50 rounded-b-xl">
+                <button type="button" onclick="document.getElementById('edit-provider-modal').classList.add('hidden')" data-hs-overlay="#edit-provider-modal" class="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-bold rounded-lg border border-gray-200 bg-white text-gray-800 shadow-sm hover:bg-gray-50 transition-all">Cancelar</button>
+                <button onclick="saveEditedProvider()" class="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-bold rounded-lg border border-transparent bg-blue-600 text-white hover:bg-blue-700 shadow-sm transition-all">Guardar Cambios</button>
             </div>
         </div>
     </div>
 
     <!-- Modal de Logística (Edición Rápida) -->
-    <div id="logistics-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-        <div class="bg-white p-6 rounded-lg shadow-2xl w-[500px] border-t-8 border-yellow-500 max-h-[90vh] overflow-y-auto">
-            <h2 class="font-black text-xl mb-4 uppercase">Edición Rápida de Logística</h2>
-            <input type="hidden" id="log-id">
-            <div class="space-y-3">
-                <div>
-                    <label for="log-fecha" class="block text-xs font-bold text-gray-600 mb-1">Fecha de Pago</label>
-                    <input type="date" id="log-fecha" class="w-full border p-2 rounded text-sm">
-                </div>
-                <div class="border-2 border-gray-300 rounded p-3 bg-gray-50">
-                    <label class="block text-xs font-bold text-gray-700 uppercase mb-2">Asignación de Centros de Costo</label>
-                    <div id="log-centros-container" class="space-y-2"></div>
-                    <div class="mt-2 flex justify-between items-center">
-                        <button type="button" id="btn-agregar-centro-log" onclick="agregarCentroLog()" class="text-xs bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded font-bold transition">
-                            <i class="fas fa-plus mr-1"></i> Agregar Centro
-                        </button>
-                        <span id="log-total-porcentaje" class="text-sm font-bold">Total: 0%</span>
+    <div id="logistics-modal" class="hidden fixed inset-0 bg-gray-900/80 backdrop-blur-sm flex items-center justify-center z-[1050] p-4 sm:p-0 transition-all">
+        <div class="bg-white rounded-xl shadow-lg border border-gray-200 w-full max-w-lg flex flex-col max-h-[90vh]">
+            <div class="flex justify-between items-center py-3 px-4 border-b border-gray-200 bg-yellow-50 rounded-t-xl">
+                <h2 class="font-black text-lg text-yellow-800 uppercase">Establecer Fecha Estimada de Pago</h2>
+                <button type="button" onclick="document.getElementById('logistics-modal').classList.add('hidden')" class="size-8 inline-flex justify-center items-center gap-x-2 rounded-full border border-transparent bg-white text-yellow-800 hover:bg-yellow-100 focus:outline-none transition">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
-                        </div>
-                        </div>
-            <div class="flex justify-end mt-6 space-x-3">
-                <button onclick="document.getElementById('logistics-modal').classList.add('hidden')" class="px-4 py-2 bg-gray-200 font-bold rounded text-sm">Cancelar</button>
-                <button onclick="saveLogistics()" class="px-4 py-2 bg-yellow-500 text-white font-bold rounded text-sm">Guardar Logística</button>
+            <div class="p-4 overflow-y-auto">
+                <input type="hidden" id="log-id">
+                <div class="space-y-4">
+                    <div>
+                        <label for="log-fecha" class="block text-xs font-bold text-gray-700 mb-1 uppercase">Fecha Estimada de Pago</label>
+                        <input type="date" id="log-fecha" class="py-2 px-3 block w-full border border-gray-200 rounded-lg text-sm focus:border-yellow-600 focus:ring-yellow-600 shadow-sm">
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-end items-center gap-x-2 py-3 px-4 border-t border-gray-200 bg-gray-50 rounded-b-xl">
+                <button onclick="document.getElementById('logistics-modal').classList.add('hidden')" class="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-bold rounded-lg border border-gray-200 bg-white text-gray-800 shadow-sm hover:bg-gray-50 transition-all">Cancelar</button>
+                <button onclick="saveLogistics()" class="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-bold rounded-lg border border-transparent bg-yellow-500 text-white hover:bg-yellow-600 shadow-sm transition-all">Guardar</button>
+            </div>
+        </div>
     </div>
-                                </div>
-                                </div>
 
     <!-- Modal de Comentarios -->
-    <div id="comments-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-        <div class="bg-white p-6 rounded-lg shadow-2xl w-[450px] border-t-8 border-gray-700">
-            <h2 class="font-black text-xl mb-4 uppercase">Comentarios</h2>
-            <input type="hidden" id="comment-id">
-            <textarea id="comment-text" class="w-full border p-2 rounded text-sm h-40"></textarea>
-            <div class="flex justify-end mt-6 space-x-3">
-                <button onclick="document.getElementById('comments-modal').classList.add('hidden')" class="px-4 py-2 bg-gray-200 font-bold rounded text-sm">Cancelar</button>
-                <button onclick="saveComment()" class="px-4 py-2 bg-black text-white font-bold rounded text-sm">Guardar</button>
+    <div id="comments-modal" class="hidden fixed inset-0 bg-gray-900/80 backdrop-blur-sm flex items-center justify-center z-[1050] p-4 sm:p-0 transition-all">
+        <div class="bg-white rounded-xl shadow-lg border border-gray-200 w-full max-w-md flex flex-col max-h-[90vh]">
+            <div class="flex justify-between items-center py-3 px-4 border-b border-gray-200 bg-gray-50 rounded-t-xl">
+                <h2 class="font-black text-lg text-gray-800 uppercase">Comentarios</h2>
+                <button type="button" onclick="document.getElementById('comments-modal').classList.add('hidden')" class="size-8 inline-flex justify-center items-center gap-x-2 rounded-full border border-transparent bg-gray-100 text-gray-800 hover:bg-gray-200 focus:outline-none transition">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-4 overflow-y-auto">
+                <input type="hidden" id="comment-id">
+                <textarea id="comment-text" class="py-3 px-4 block w-full border border-gray-200 rounded-lg text-sm focus:border-black focus:ring-black shadow-sm h-40" placeholder="Añade un comentario a este registro..."></textarea>
+            </div>
+            <div class="flex justify-end items-center gap-x-2 py-3 px-4 border-t border-gray-200 bg-gray-50 rounded-b-xl">
+                <button onclick="document.getElementById('comments-modal').classList.add('hidden')" class="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-bold rounded-lg border border-gray-200 bg-white text-gray-800 shadow-sm hover:bg-gray-50 transition-all">Cancelar</button>
+                <button onclick="saveComment()" class="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-bold rounded-lg border border-transparent bg-black text-white hover:bg-gray-800 shadow-sm transition-all">Guardar</button>
+            </div>
+        </div>
     </div>
-                            </div>
-                        </div>
 
     <!-- Modal Historial -->
-    <div id="history-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-        <div class="bg-white p-6 rounded-lg shadow-2xl w-[450px] border-t-8 border-blue-600 max-h-[90vh] overflow-y-auto">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="font-black text-xl uppercase">Historial de Cambios</h2>
-                <button onclick="document.getElementById('history-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-800 text-2xl">&times;</button>
+    <div id="history-modal" class="hidden fixed inset-0 bg-gray-900/80 backdrop-blur-sm flex items-center justify-center z-[1050] p-4 sm:p-0 transition-all">
+        <div class="bg-white rounded-xl shadow-lg border border-gray-200 w-full max-w-md flex flex-col max-h-[90vh]">
+            <div class="flex justify-between items-center py-3 px-4 border-b border-gray-200 bg-blue-50 rounded-t-xl">
+                <h2 class="font-black text-lg text-blue-800 uppercase">Historial de Cambios</h2>
+                <button type="button" onclick="document.getElementById('history-modal').classList.add('hidden')" class="size-8 inline-flex justify-center items-center gap-x-2 rounded-full border border-transparent bg-white text-blue-800 hover:bg-blue-100 focus:outline-none transition">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
-            <div id="history-content" class="space-y-3"></div>
+            <div class="p-4 overflow-y-auto bg-gray-50/50">
+                <div id="history-content" class="space-y-3"></div>
+            </div>
         </div>
     </div>
 
     <!-- Modal Exportación Excel -->
-    <div id="export-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[60]">
-        <div class="bg-white p-6 rounded-lg shadow-2xl w-[600px] border-t-8 border-red-600">
-            <h2 class="font-black text-xl mb-4 uppercase">Configurar Exportación Excel</h2>
-            <p class="text-xs text-gray-500 mb-4">Selecciona los campos que deseas incluir en el reporte:</p>
-            
-            <div class="grid grid-cols-2 gap-2 mb-6 max-h-[300px] overflow-y-auto p-2 border rounded">
-                <label class="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="checkbox" class="export-field" value="ID" checked> <span class="text-sm">ID Registro</span>
-                </label>
-                <label class="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="checkbox" class="export-field" value="Origen" checked> <span class="text-sm">Origen (XML/Manual/etc)</span>
-                </label>
-                <label class="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="checkbox" class="export-field" value="RFC Emisor" checked> <span class="text-sm">RFC Emisor</span>
-                </label>
-                <label class="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="checkbox" class="export-field" value="Nombre Emisor" checked> <span class="text-sm">Nombre Emisor</span>
-                </label>
-                <label class="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="checkbox" class="export-field" value="UUID/Folio" checked> <span class="text-sm">UUID / Folio</span>
-                </label>
-                <label class="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="checkbox" class="export-field" value="Total" checked> <span class="text-sm">Importe Total</span>
-                </label>
-                <label class="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="checkbox" class="export-field" value="Moneda" checked> <span class="text-sm">Moneda</span>
-                </label>
-                <label class="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="checkbox" class="export-field" value="Fecha Emisión" checked> <span class="text-sm">Fecha Factura/XML</span>
-                </label>
-                <label class="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="checkbox" class="export-field" value="Fecha Registro" checked> <span class="text-sm">Fecha de Carga</span>
-                </label>
-                <label class="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="checkbox" class="export-field" value="Usuario" checked> <span class="text-sm">Cargado por (Usuario)</span>
-                </label>
-                <label class="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="checkbox" class="export-field" value="Centro Costo" checked> <span class="text-sm">Centro de Costo</span>
-                </label>
-                <label class="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="checkbox" class="export-field" value="Subcatálogo" checked> <span class="text-sm">Subcatálogo</span>
-                </label>
-                <label class="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="checkbox" class="export-field" value="Porcentaje" checked> <span class="text-sm">Distribución %</span>
-                </label>
-                <label class="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="checkbox" class="export-field" value="Fecha Pago" checked> <span class="text-sm">Fecha de Pago</span>
-                </label>
-                <label class="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="checkbox" class="export-field" value="Estado" checked> <span class="text-sm">Estado Actual</span>
-                </label>
-                <label class="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="checkbox" class="export-field" value="Uso CFDI" checked> <span class="text-sm">Uso CFDI</span>
-                </label>
-                <label class="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="checkbox" class="export-field" value="Forma Pago" checked> <span class="text-sm">Forma de Pago</span>
-                </label>
-                <label class="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="checkbox" class="export-field" value="Método Pago" checked> <span class="text-sm">Método de Pago</span>
-                </label>
-                <label class="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="checkbox" class="export-field" value="Clave SAT" checked> <span class="text-sm">Clave SAT</span>
-                </label>
-                <label class="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="checkbox" class="export-field" value="Descripción SAT" checked> <span class="text-sm">Descripción XML</span>
-                </label>
-                <label class="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="checkbox" class="export-field" value="Comentarios" checked> <span class="text-sm">Comentarios Libres</span>
-                </label>
+    <div id="export-modal" class="hidden fixed inset-0 bg-gray-900/80 backdrop-blur-sm flex items-center justify-center z-[1060] p-4 sm:p-0 transition-all">
+        <div class="bg-white rounded-xl shadow-lg border border-gray-200 w-full max-w-2xl flex flex-col max-h-[90vh]">
+            <div class="flex justify-between items-center py-3 px-4 border-b border-gray-200 bg-red-50 rounded-t-xl">
+                <h2 class="font-black text-lg text-red-800 uppercase">Configurar Exportación Excel</h2>
+                <button type="button" onclick="document.getElementById('export-modal').classList.add('hidden')" class="size-8 inline-flex justify-center items-center gap-x-2 rounded-full border border-transparent bg-white text-red-800 hover:bg-red-100 focus:outline-none transition">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-5 overflow-y-auto">
+                <p class="text-sm font-medium text-gray-600 mb-4">Selecciona los campos que deseas incluir en el reporte:</p>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mb-6 p-4 border border-gray-200 rounded-xl bg-gray-50 shadow-inner max-h-[350px] overflow-y-auto">
+                    <label class="flex items-center space-x-3 p-2 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-red-500 transition-colors shadow-sm">
+                        <input type="checkbox" class="export-field shrink-0 border-gray-300 rounded text-red-600 focus:ring-red-500" value="ID" checked> <span class="text-xs font-bold text-gray-700">ID Registro</span>
+                    </label>
+                    <label class="flex items-center space-x-3 p-2 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-red-500 transition-colors shadow-sm">
+                        <input type="checkbox" class="export-field shrink-0 border-gray-300 rounded text-red-600 focus:ring-red-500" value="Origen" checked> <span class="text-xs font-bold text-gray-700">Origen</span>
+                    </label>
+                    <label class="flex items-center space-x-3 p-2 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-red-500 transition-colors shadow-sm">
+                        <input type="checkbox" class="export-field shrink-0 border-gray-300 rounded text-red-600 focus:ring-red-500" value="RFC Emisor" checked> <span class="text-xs font-bold text-gray-700">RFC Emisor</span>
+                    </label>
+                    <label class="flex items-center space-x-3 p-2 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-red-500 transition-colors shadow-sm">
+                        <input type="checkbox" class="export-field shrink-0 border-gray-300 rounded text-red-600 focus:ring-red-500" value="Nombre Emisor" checked> <span class="text-xs font-bold text-gray-700">Nombre Emisor</span>
+                    </label>
+                    <label class="flex items-center space-x-3 p-2 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-red-500 transition-colors shadow-sm">
+                        <input type="checkbox" class="export-field shrink-0 border-gray-300 rounded text-red-600 focus:ring-red-500" value="UUID/Folio" checked> <span class="text-xs font-bold text-gray-700">UUID / Folio</span>
+                    </label>
+                    <label class="flex items-center space-x-3 p-2 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-red-500 transition-colors shadow-sm">
+                        <input type="checkbox" class="export-field shrink-0 border-gray-300 rounded text-red-600 focus:ring-red-500" value="Total" checked> <span class="text-xs font-bold text-gray-700">Importe Total</span>
+                    </label>
+                    <label class="flex items-center space-x-3 p-2 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-red-500 transition-colors shadow-sm">
+                        <input type="checkbox" class="export-field shrink-0 border-gray-300 rounded text-red-600 focus:ring-red-500" value="Moneda" checked> <span class="text-xs font-bold text-gray-700">Moneda</span>
+                    </label>
+                    <label class="flex items-center space-x-3 p-2 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-red-500 transition-colors shadow-sm">
+                        <input type="checkbox" class="export-field shrink-0 border-gray-300 rounded text-red-600 focus:ring-red-500" value="Fecha Emisión" checked> <span class="text-xs font-bold text-gray-700">Fecha Factura</span>
+                    </label>
+                    <label class="flex items-center space-x-3 p-2 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-red-500 transition-colors shadow-sm">
+                        <input type="checkbox" class="export-field shrink-0 border-gray-300 rounded text-red-600 focus:ring-red-500" value="Fecha Registro" checked> <span class="text-xs font-bold text-gray-700">Fecha de Carga</span>
+                    </label>
+                    <label class="flex items-center space-x-3 p-2 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-red-500 transition-colors shadow-sm">
+                        <input type="checkbox" class="export-field shrink-0 border-gray-300 rounded text-red-600 focus:ring-red-500" value="Usuario" checked> <span class="text-xs font-bold text-gray-700">Cargado por</span>
+                    </label>
+                    <label class="flex items-center space-x-3 p-2 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-red-500 transition-colors shadow-sm">
+                        <input type="checkbox" class="export-field shrink-0 border-gray-300 rounded text-red-600 focus:ring-red-500" value="Centro Costo" checked> <span class="text-xs font-bold text-gray-700">Centro de Costo</span>
+                    </label>
+                    <label class="flex items-center space-x-3 p-2 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-red-500 transition-colors shadow-sm">
+                        <input type="checkbox" class="export-field shrink-0 border-gray-300 rounded text-red-600 focus:ring-red-500" value="Subcatálogo" checked> <span class="text-xs font-bold text-gray-700">Subcatálogo</span>
+                    </label>
+                    <label class="flex items-center space-x-3 p-2 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-red-500 transition-colors shadow-sm">
+                        <input type="checkbox" class="export-field shrink-0 border-gray-300 rounded text-red-600 focus:ring-red-500" value="Porcentaje" checked> <span class="text-xs font-bold text-gray-700">Distribución %</span>
+                    </label>
+                    <label class="flex items-center space-x-3 p-2 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-red-500 transition-colors shadow-sm">
+                        <input type="checkbox" class="export-field shrink-0 border-gray-300 rounded text-red-600 focus:ring-red-500" value="Fecha Pago" checked> <span class="text-xs font-bold text-gray-700">Fecha de Pago</span>
+                    </label>
+                    <label class="flex items-center space-x-3 p-2 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-red-500 transition-colors shadow-sm">
+                        <input type="checkbox" class="export-field shrink-0 border-gray-300 rounded text-red-600 focus:ring-red-500" value="Estado" checked> <span class="text-xs font-bold text-gray-700">Estado Actual</span>
+                    </label>
+                    <label class="flex items-center space-x-3 p-2 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-red-500 transition-colors shadow-sm">
+                        <input type="checkbox" class="export-field shrink-0 border-gray-300 rounded text-red-600 focus:ring-red-500" value="Uso CFDI" checked> <span class="text-xs font-bold text-gray-700">Uso CFDI</span>
+                    </label>
+                    <label class="flex items-center space-x-3 p-2 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-red-500 transition-colors shadow-sm">
+                        <input type="checkbox" class="export-field shrink-0 border-gray-300 rounded text-red-600 focus:ring-red-500" value="Forma Pago" checked> <span class="text-xs font-bold text-gray-700">Forma de Pago</span>
+                    </label>
+                    <label class="flex items-center space-x-3 p-2 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-red-500 transition-colors shadow-sm">
+                        <input type="checkbox" class="export-field shrink-0 border-gray-300 rounded text-red-600 focus:ring-red-500" value="Método Pago" checked> <span class="text-xs font-bold text-gray-700">Método de Pago</span>
+                    </label>
+                    <label class="flex items-center space-x-3 p-2 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-red-500 transition-colors shadow-sm">
+                        <input type="checkbox" class="export-field shrink-0 border-gray-300 rounded text-red-600 focus:ring-red-500" value="Clave SAT" checked> <span class="text-xs font-bold text-gray-700">Clave SAT</span>
+                    </label>
+                    <label class="flex items-center space-x-3 p-2 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-red-500 transition-colors shadow-sm">
+                        <input type="checkbox" class="export-field shrink-0 border-gray-300 rounded text-red-600 focus:ring-red-500" value="Descripción SAT" checked> <span class="text-xs font-bold text-gray-700">Descripción XML</span>
+                    </label>
+                    <label class="flex items-center space-x-3 p-2 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-red-500 transition-colors shadow-sm">
+                        <input type="checkbox" class="export-field shrink-0 border-gray-300 rounded text-red-600 focus:ring-red-500" value="Comentarios" checked> <span class="text-xs font-bold text-gray-700">Comentarios Libres</span>
+                    </label>
+                    <label class="flex items-center space-x-3 p-2 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-red-500 transition-colors shadow-sm">
+                        <input type="checkbox" class="export-field shrink-0 border-gray-300 rounded text-red-600 focus:ring-red-500" value="Porcentaje Pago (Registro)" checked> <span class="text-xs font-bold text-gray-700">% Pago (Factura)</span>
+                    </label>
+                    <label class="flex items-center space-x-3 p-2 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-red-500 transition-colors shadow-sm">
+                        <input type="checkbox" class="export-field shrink-0 border-gray-300 rounded text-red-600 focus:ring-red-500" value="Proveedor Registrado" checked> <span class="text-xs font-bold text-gray-700">Prov. Registrado</span>
+                    </label>
+                    <label class="flex items-center space-x-3 p-2 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-red-500 transition-colors shadow-sm">
+                        <input type="checkbox" class="export-field shrink-0 border-gray-300 rounded text-red-600 focus:ring-red-500" value="Banco (Proveedor)" checked> <span class="text-xs font-bold text-gray-700">Banco</span>
+                    </label>
+                    <label class="flex items-center space-x-3 p-2 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-red-500 transition-colors shadow-sm">
+                        <input type="checkbox" class="export-field shrink-0 border-gray-300 rounded text-red-600 focus:ring-red-500" value="Cuenta/CLABE (Proveedor)" checked> <span class="text-xs font-bold text-gray-700">Cuenta / CLABE</span>
+                    </label>
+                    <label class="flex items-center space-x-3 p-2 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-red-500 transition-colors shadow-sm">
+                        <input type="checkbox" class="export-field shrink-0 border-gray-300 rounded text-red-600 focus:ring-red-500" value="Tipo Operación (Proveedor)" checked> <span class="text-xs font-bold text-gray-700">Tipo Op. Bancaria</span>
+                    </label>
+                    <label class="flex items-center space-x-3 p-2 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-red-500 transition-colors shadow-sm">
+                        <input type="checkbox" class="export-field shrink-0 border-gray-300 rounded text-red-600 focus:ring-red-500" value="Expediente (Proveedor)" checked> <span class="text-xs font-bold text-gray-700">Expediente Documental</span>
+                    </label>
+                    <label class="flex items-center space-x-3 p-2 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-red-500 transition-colors shadow-sm">
+                        <input type="checkbox" class="export-field shrink-0 border-gray-300 rounded text-red-600 focus:ring-red-500" value="Validación Bancaria" checked> <span class="text-xs font-bold text-gray-700">Val. Bancaria</span>
+                    </label>
+                    <label class="flex items-center space-x-3 p-2 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-red-500 transition-colors shadow-sm">
+                        <input type="checkbox" class="export-field shrink-0 border-gray-300 rounded text-red-600 focus:ring-red-500" value="Validación Expediente" checked> <span class="text-xs font-bold text-gray-700">Val. Expediente</span>
+                    </label>
+                    <label class="flex items-center space-x-3 p-2 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-red-500 transition-colors shadow-sm">
+                        <input type="checkbox" class="export-field shrink-0 border-gray-300 rounded text-red-600 focus:ring-red-500" value="Email (Proveedor)" checked> <span class="text-xs font-bold text-gray-700">Email Proveedor</span>
+                    </label>
+                    <label class="flex items-center space-x-3 p-2 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-red-500 transition-colors shadow-sm">
+                        <input type="checkbox" class="export-field shrink-0 border-gray-300 rounded text-red-600 focus:ring-red-500" value="Campo Libre (Proveedor)" checked> <span class="text-xs font-bold text-gray-700">Notas de Proveedor</span>
+                    </label>
+                </div>
+
+                <div class="flex justify-between items-center bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
+                    <button onclick="toggleAllFields(true)" class="text-xs text-red-600 font-bold hover:underline bg-red-50 px-3 py-1.5 rounded transition">Seleccionar Todos</button>
+                    <button onclick="toggleAllFields(false)" class="text-xs text-gray-600 font-bold hover:underline bg-gray-100 px-3 py-1.5 rounded transition">Desmarcar Todos</button>
+                </div>
             </div>
 
-            <div class="flex justify-between items-center">
-                <button onclick="toggleAllFields(true)" class="text-xs text-blue-600 font-bold hover:underline">Seleccionar Todos</button>
-                <button onclick="toggleAllFields(false)" class="text-xs text-red-600 font-bold hover:underline">Desmarcar Todos</button>
-            </div>
-
-            <div class="flex justify-end mt-6 space-x-3">
-                <button onclick="document.getElementById('export-modal').classList.add('hidden')" class="px-4 py-2 bg-gray-200 font-bold rounded text-sm">Cancelar</button>
-                <button onclick="executeExport()" class="px-4 py-2 bg-red-600 text-white font-bold rounded text-sm shadow hover:bg-red-700">Generar Excel</button>
+            <div class="flex justify-end items-center gap-x-2 py-3 px-4 border-t border-gray-200 bg-gray-50 rounded-b-xl">
+                <button onclick="document.getElementById('export-modal').classList.add('hidden')" class="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-bold rounded-lg border border-gray-200 bg-white text-gray-800 shadow-sm hover:bg-gray-50 transition-all">Cancelar</button>
+                <button onclick="executeExport()" class="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-bold rounded-lg border border-transparent ulma-red ulma-red-hover text-white shadow-sm transition-all"><i class="fas fa-file-excel mr-1"></i> Generar Excel</button>
             </div>
         </div>
     </div>
@@ -585,19 +778,22 @@
         let authToken = localStorage.getItem("token");
         let userRole = localStorage.getItem("role");
         let globalData = []; 
+        let currentPage = 1;
+        const limitPerPage = 50;
+        let totalCount = 0;
 
         // Subcatálogos por centro de costo
         const listaSub = [
-            'FERIAS',
-            'FLETES',
-            'GASTOS GENERALES',
-            'UNIFORMES',
-            'MAQUINADOS',
-            'CURSOS Y CAPACITACIÓN',
-            'SOFTWARES Y LICENCIAS',
-            'SERVICIOS ADMINISTRATIVOS',
-            'PUBLICIDAD',
-            'REFACCIONES'
+            'Ferias',
+            'Fletes',
+            'Gastos Generales',
+            'Uniformes',
+            'Maquinados',
+            'Cursos y Capacitación',
+            'Softwares y Licencias',
+            'Servicios Administrativos',
+            'Publicidad',
+            'Refacciones'
         ];
 
         const subcatalogos = {
@@ -647,7 +843,7 @@
                 document.getElementById('btn-exportar').classList.add('hidden');
                 document.getElementById('btn-reset').classList.add('hidden');
             }
-            showMainView(); // Show main view by default
+            fetchData(); // Load data initially
         }
 
         function showLoader() { document.getElementById('loader').classList.remove('hidden'); }
@@ -663,25 +859,6 @@
                 backgroundColor: isError ? "#E3000F" : "#28a745",
             }).showToast();
         }
-        // =========================================================
-        // Funciones para la Vista Principal (Registros Consolidados)
-        // =========================================================
-        function showMainView() {
-            document.getElementById('main-content-view').classList.remove('hidden');
-            document.getElementById('providers-content-view').classList.add('hidden');
-            document.getElementById('indicators-content-view').classList.add('hidden'); // NEW
-
-            document.getElementById('tab-main').classList.remove('bg-gray-700', 'text-gray-300', 'hover:bg-gray-600', 'hover:text-white');
-            document.getElementById('tab-main').classList.add('bg-white', 'text-black');
-
-            document.getElementById('tab-providers').classList.remove('bg-white', 'text-black');
-            document.getElementById('tab-providers').classList.add('bg-gray-700', 'text-gray-300', 'hover:bg-gray-600', 'hover:text-white');
-
-            document.getElementById('tab-indicators').classList.remove('bg-white', 'text-black'); // NEW
-            document.getElementById('tab-indicators').classList.add('bg-gray-700', 'text-gray-300', 'hover:bg-gray-600', 'hover:text-white'); // NEW
-
-                fetchData();
-            }
 
         async function uploadXML() {
             const input = document.getElementById('xml-file');
@@ -734,6 +911,12 @@
 
         // ========== FUNCIONES PARA CENTROS DE COSTO DINÁMICOS - MANUAL ==========
         function openManualModal() {
+            document.getElementById('man-porcentaje-pago').value = '100.00';
+            if (userRole === 'admin' || userRole === 'supervisor') {
+                document.getElementById('man-porcentaje-pago-container').classList.remove('hidden');
+            } else {
+                document.getElementById('man-porcentaje-pago-container').classList.add('hidden');
+            }
             document.getElementById('manual-modal').classList.remove('hidden');
             manualCentroCounter = 0;
             document.getElementById('man-centros-container').innerHTML = '';
@@ -748,7 +931,7 @@
             const subSelects = container.querySelectorAll('select[id^="' + prefix + '-subcatalogo-"]');
             let show = false;
             subSelects.forEach(select => {
-                if (select.value === 'REFACCIONES') {
+                if (select.value === 'Refacciones') {
                     show = true;
                 }
             });
@@ -877,6 +1060,12 @@
                 };
             }
 
+            let porcentaje_pago = 100.00;
+            if (userRole === 'admin' || userRole === 'supervisor') {
+                const p = parseFloat(document.getElementById('man-porcentaje-pago').value);
+                if (!isNaN(p)) porcentaje_pago = p;
+            }
+
             const body = JSON.stringify({
                 rfc: document.getElementById('man-rfc').value || 'SIN RFC',
                 nombre: document.getElementById('man-nombre').value || 'MANUAL',
@@ -885,6 +1074,7 @@
                 centro: centros[0].centro,
                 subcatalogo: centros[0].subcatalogo,
                 porcentaje: porcentajeStr,
+                porcentaje_pago: porcentaje_pago,
                 moneda: document.getElementById('man-moneda').value || 'MXN',
                 fecha: document.getElementById('man-fecha').value || 'POR DEFINIR',
                 comentarios: document.getElementById('man-comentarios').value || '',
@@ -1052,6 +1242,13 @@
                 });
             }
             
+            if (userRole === 'admin' || userRole === 'supervisor') {
+                document.getElementById('edit-porcentaje-pago-container').classList.remove('hidden');
+                document.getElementById('edit-porcentaje-pago').value = registro.porcentaje_pago !== undefined ? registro.porcentaje_pago : '100.00';
+            } else {
+                document.getElementById('edit-porcentaje-pago-container').classList.add('hidden');
+            }
+
             calcularTotalEdit();
             checkRefaccionesVisibility('edit'); // Comprobar visibilidad al abrir
             document.getElementById('edit-modal').classList.remove('hidden');
@@ -1088,7 +1285,7 @@
                 };
             }
 
-            const body = JSON.stringify({
+            const payload = {
                 rfc: document.getElementById('edit-rfc').value,
                 nombre: document.getElementById('edit-nombre').value,
                 total: parseFloat(document.getElementById('edit-total').value),
@@ -1100,7 +1297,14 @@
                 moneda: document.getElementById('edit-moneda').value,
                 comentarios: document.getElementById('edit-comentarios').value,
                 ...refaccionesData
-            });
+            };
+            
+            if (userRole === 'admin' || userRole === 'supervisor') {
+                const p = parseFloat(document.getElementById('edit-porcentaje-pago').value);
+                if (!isNaN(p)) payload.porcentaje_pago = p;
+            }
+
+            const body = JSON.stringify(payload);
             
             showLoader();
             const res = await fetch(`/api/documentos/${id}`, { method: 'PUT', headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' }, body });
@@ -1206,49 +1410,70 @@
             }
         }
 
+        function applyFilters() {
+            currentPage = 1;
+            fetchData();
+        }
+
         async function fetchData() {
-            const res = await fetch('/api/ver-datos', { headers: { 'Authorization': `Bearer ${authToken}` } });
+            const txt = document.getElementById("filtro-texto").value;
+            const org = document.getElementById("filtro-origen").value;
+            const fInicio = document.getElementById("filtro-fecha-inicio").value;
+            const fFin = document.getElementById("filtro-fecha-fin").value;
+
+            const skip = (currentPage - 1) * limitPerPage;
+            let url = `/api/ver-datos?skip=${skip}&limit=${limitPerPage}`;
+            if (txt) url += `&search=${encodeURIComponent(txt)}`;
+            if (org) url += `&origen=${encodeURIComponent(org)}`;
+            if (fInicio) url += `&fecha_inicio=${encodeURIComponent(fInicio)}`;
+            if (fFin) url += `&fecha_fin=${encodeURIComponent(fFin)}`;
+
+            showLoader();
+            const res = await fetch(url, { headers: { 'Authorization': `Bearer ${authToken}` } });
+            hideLoader();
+            
             if (!res.ok) {
                 showToast("Sesión expirada, por favor inicia sesión de nuevo.", true);
                 return logout();
             }
             const data = await res.json();
             globalData = data.registros; 
+            totalCount = data.total_count;
             updateKPIs(data.kpis);
-            applyFilters(); 
+            renderTable(globalData);
+            renderPagination();
         }
 
-        function applyFilters() {
-            const txt = document.getElementById("filtro-texto").value.toLowerCase();
-            const org = document.getElementById("filtro-origen").value;
-            const fInicio = document.getElementById("filtro-fecha-inicio").value;
-            const fFin = document.getElementById("filtro-fecha-fin").value;
+        function renderPagination() {
+            let container = document.getElementById('pagination-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'pagination-container';
+                container.className = 'p-4 bg-white border-t border-gray-200 flex justify-between items-center rounded-b-xl';
+                document.getElementById('table-container').after(container);
+            }
+            
+            const totalPages = Math.ceil(totalCount / limitPerPage);
+            if (totalPages <= 1) {
+                container.innerHTML = '';
+                return;
+            }
 
-            const filtrados = globalData.filter(row => {
-                const matchTxt = (
-                    (row.nombre && row.nombre.toLowerCase().includes(txt)) ||
-                    (row.remitente_rfc && row.remitente_rfc.toLowerCase().includes(txt)) ||
-                    (row.uuid_folio && row.uuid_folio.toLowerCase().includes(txt)) ||
-                    (row.centro_costo && row.centro_costo.toLowerCase().includes(txt))
-                );
-                
-                const matchOrg = org === "" || row.tipo === org;
+            let html = `<div class="text-sm text-gray-500 font-medium">Mostrando ${globalData.length} de ${totalCount} registros</div>`;
+            html += `<div class="flex items-center space-x-2">`;
+            html += `<button onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''} class="px-3 py-1.5 bg-white border border-gray-200 font-bold rounded-lg text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition">Anterior</button>`;
+            html += `<span class="text-sm font-bold text-gray-800 px-3 py-1.5 bg-gray-100 rounded-lg">Página ${currentPage} de ${totalPages}</span>`;
+            html += `<button onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''} class="px-3 py-1.5 bg-white border border-gray-200 font-bold rounded-lg text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition">Siguiente</button>`;
+            html += `</div>`;
+            container.innerHTML = html;
+        }
 
-                let matchFecha = true;
-                if (fInicio || fFin) {
-                    if (row.fecha_pago === 'POR DEFINIR' || !row.fecha_pago) {
-                        matchFecha = false; 
-                    } else {
-                        const rowFecha = new Date(row.fecha_pago + 'T00:00:00'); 
-                        if (fInicio && rowFecha < new Date(fInicio + 'T00:00:00')) matchFecha = false;
-                        if (fFin && rowFecha > new Date(fFin + 'T23:59:59')) matchFecha = false;
-                    }
-                }
-
-                return matchTxt && matchOrg && matchFecha;
-            });
-
-            renderTable(filtrados);
+        function changePage(newPage) {
+            const totalPages = Math.ceil(totalCount / limitPerPage);
+            if (newPage >= 1 && newPage <= totalPages) {
+                currentPage = newPage;
+                fetchData();
+            }
         }
 
         function updateKPIs(kpis) {
@@ -1276,7 +1501,7 @@
             let sumaFinal = 0;
             
             dataArray.forEach(row => {
-                sumaFinal += row.total; 
+                sumaFinal += (row.total || 0); 
 
                 let colorOrigen = row.tipo === 'XML' ? 'bg-green-100 text-green-800 border-green-200' :
                                   row.tipo === 'EXCEL' ? 'bg-blue-100 text-blue-800 border-blue-200' :
@@ -1419,8 +1644,9 @@
                                 </div>
                             </div>
                         </td>
-                        <td class="p-3 font-black text-lg text-black text-right align-middle">
-                            $${row.total.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                        <td class="p-3 font-black text-sm text-black text-right align-middle">
+                            $${(row.total || 0).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                            ${row.porcentaje_pago !== undefined ? `<div class="text-[11px] text-blue-700 font-bold mt-1">${row.porcentaje_pago}%</div>` : ''}
                         </td>
                         <td class="p-3 text-[10px] text-gray-700 align-middle space-y-1">
                             <div class="flex items-center" title="Centro"><i class="fas fa-map-marker-alt text-gray-400 w-4 text-center mr-1"></i><div>${row.centro_costo}</div></div>
@@ -1431,13 +1657,37 @@
                             ${badgeEstado}
                             ${btnPagoAdmin}
                         </td>
+                        <td class="p-3 align-middle text-center">
+                            ${(row.estado_pago === 'Autorizado' && userRole === 'admin') ? `<button onclick="openLogisticsModal(${row.id})" class="text-blue-500 hover:text-blue-700 transition" title="Establecer Fecha Estimada"><i class="far fa-calendar-alt text-lg"></i></button>` : ''}
+                            ${row.fecha_estimada_pago && row.fecha_estimada_pago !== 'POR DEFINIR' ? `<div class="text-[10px] text-gray-600 mt-1 font-bold">${row.fecha_estimada_pago}</div>` : ''}
+                        </td>
                         <td class="p-3 align-middle">${facBadge}${compBadge}${otrosBadge}</td>
                         <td class="p-3 align-middle">
                             <div class="flex justify-center items-center gap-4">
-                                <button onclick="openCommentsModal(${row.id})" class="text-gray-400 hover:text-gray-800 text-lg transition" title="Comentarios"><i class="fas fa-comment"></i></button>
-                                <button onclick="showHistory(${row.id})" class="text-gray-400 hover:text-blue-600 text-lg transition" title="Ver Historial"><i class="fas fa-history"></i></button>
-                                <button onclick="openEdit(${row.id})" class="text-gray-400 hover:text-black text-lg transition" title="Editar"><i class="fas fa-edit"></i></button>
-                                <button onclick="deleteDoc(${row.id})" class="text-gray-400 hover:text-red-600 text-lg transition" title="Eliminar"><i class="fas fa-trash-alt"></i></button>
+                                <div class="hs-tooltip inline-block">
+                                    <button onclick="openCommentsModal(${row.id})" class="hs-tooltip-toggle text-gray-400 hover:text-gray-800 text-lg transition">
+                                        <i class="fas fa-comment"></i>
+                                        <span class="hs-tooltip-content hs-tooltip-shown:opacity-100 hs-tooltip-shown:visible opacity-0 transition-opacity inline-block absolute invisible z-10 py-1 px-2 bg-gray-900 text-xs font-medium text-white rounded-lg shadow-sm" role="tooltip">Comentarios</span>
+                                    </button>
+                                </div>
+                                <div class="hs-tooltip inline-block">
+                                    <button onclick="showHistory(${row.id})" class="hs-tooltip-toggle text-gray-400 hover:text-blue-600 text-lg transition">
+                                        <i class="fas fa-history"></i>
+                                        <span class="hs-tooltip-content hs-tooltip-shown:opacity-100 hs-tooltip-shown:visible opacity-0 transition-opacity inline-block absolute invisible z-10 py-1 px-2 bg-gray-900 text-xs font-medium text-white rounded-lg shadow-sm" role="tooltip">Ver Historial</span>
+                                    </button>
+                                </div>
+                                <div class="hs-tooltip inline-block">
+                                    <button onclick="openEdit(${row.id})" class="hs-tooltip-toggle text-gray-400 hover:text-black text-lg transition">
+                                        <i class="fas fa-edit"></i>
+                                        <span class="hs-tooltip-content hs-tooltip-shown:opacity-100 hs-tooltip-shown:visible opacity-0 transition-opacity inline-block absolute invisible z-10 py-1 px-2 bg-gray-900 text-xs font-medium text-white rounded-lg shadow-sm" role="tooltip">Editar</span>
+                                    </button>
+                                </div>
+                                <div class="hs-tooltip inline-block">
+                                    <button onclick="deleteDoc(${row.id})" class="hs-tooltip-toggle text-gray-400 hover:text-red-600 text-lg transition">
+                                        <i class="fas fa-trash-alt"></i>
+                                        <span class="hs-tooltip-content hs-tooltip-shown:opacity-100 hs-tooltip-shown:visible opacity-0 transition-opacity inline-block absolute invisible z-10 py-1 px-2 bg-gray-900 text-xs font-medium text-white rounded-lg shadow-sm" role="tooltip">Eliminar</span>
+                                    </button>
+                                </div>
                             </div>
                         </td>
                     </tr>`;
@@ -1605,49 +1855,16 @@
             if (!registro) return;
             
             document.getElementById('log-id').value = id;
-            document.getElementById('log-fecha').value = registro.fecha_pago !== 'POR DEFINIR' ? registro.fecha_pago : '';
+            document.getElementById('log-fecha').value = registro.fecha_estimada_pago && registro.fecha_estimada_pago !== 'POR DEFINIR' ? registro.fecha_estimada_pago : '';
 
-            logCentroCounter = 0;
-            const container = document.getElementById('log-centros-container');
-            container.innerHTML = '';
-            const porcentajeStr = registro.porcentaje_centro || '100%';
-
-            if (porcentajeStr === '100%') {
-                agregarCentroLog();
-                document.getElementById(`log-centro-select-0`).value = registro.centro_costo || '';
-                updateSubcatalogoLog(0);
-                document.getElementById(`log-subcatalogo-0`).value = registro.subcatalogo_centro || '';
-                document.getElementById(`log-porcentaje-0`).value = 100;
-            } else {
-                porcentajeStr.split(',').forEach(parte => {
-                    const match = parte.match(/([^:]+):(\d+(?:\.\d+)?)%/); // CORRECT REGEX
-                    if (match) {
-                        agregarCentroLog();
-                        const idx = logCentroCounter - 1;
-                        document.getElementById(`log-centro-select-${idx}`).value = match[1];
-                        updateSubcatalogoLog(idx);
-                        document.getElementById(`log-porcentaje-${idx}`).value = parseFloat(match[2]);
-                    }
-                });
-            }
-            calcularTotalLog();
             document.getElementById('logistics-modal').classList.remove('hidden');
         }
 
         async function saveLogistics() {
             const id = document.getElementById('log-id').value;
-            const centros = obtenerCentrosLog();
-            if (centros.length === 0) return showToast('Debes agregar al menos un centro de costo', true);
-            const totalPorcentaje = centros.reduce((sum, c) => sum + c.porcentaje, 0);
-            if (Math.abs(totalPorcentaje - 100) > 0.01) return showToast('Los porcentajes deben sumar 100%', true);
-
-            const porcentajeStr = centros.length === 1 && centros[0].porcentaje === 100 ? '100%' : centros.map(c => `${c.centro}:${c.porcentaje}%`).join(',');
-
+            
             const body = JSON.stringify({
-                centro_costo: centros[0].centro,
-                subcatalogo: centros[0].subcatalogo,
-                porcentaje_centro: porcentajeStr,
-                fecha_pago: document.getElementById('log-fecha').value
+                fecha_estimada_pago: document.getElementById('log-fecha').value
             });
 
             showLoader();
@@ -1655,11 +1872,11 @@
             hideLoader();
 
             if(res.ok) {
-                showToast("✅ Logística guardada con éxito");
+                showToast("✅ Fecha estimada guardada con éxito");
                 document.getElementById('logistics-modal').classList.add('hidden');
                 fetchData();
             } else {
-                showToast("❌ Error al guardar la logística", true);
+                showToast("❌ Error al guardar la fecha estimada", true);
             }
         }
 
@@ -1717,27 +1934,37 @@
         }
 
         // =========================================================
-        // Funciones para la Vista de Proveedores
+        // Timeout de Inactividad por Seguridad
+        // =========================================================
+        let inactivityTime = function () {
+            let time;
+            window.onload = resetTimer;
+            document.onmousemove = resetTimer;
+            document.onkeydown = resetTimer;
+            document.onclick = resetTimer;
+            document.onscroll = resetTimer;
+
+            function doLogout() {
+                if (localStorage.getItem("token")) {
+                    showToast("Sesión expirada por inactividad (15 min).", true);
+                    setTimeout(logout, 2000);
+                }
+            }
+
+            function resetTimer() {
+                clearTimeout(time);
+                if (localStorage.getItem("token")) {
+                    time = setTimeout(doLogout, 15 * 60 * 1000); // 15 minutos
+                }
+            }
+        };
+        inactivityTime();
+
+        // =========================================================
+        // Funciones para la Vista Principal (Registros Consolidados)
         // =========================================================
 
         let providersData = []; // Para almacenar los datos de los proveedores
-
-        function showProvidersView() {
-            document.getElementById('main-content-view').classList.add('hidden');
-            document.getElementById('providers-content-view').classList.remove('hidden');
-            document.getElementById('indicators-content-view').classList.add('hidden'); // NEW
-
-            document.getElementById('tab-providers').classList.remove('bg-gray-700', 'text-gray-300', 'hover:bg-gray-600', 'hover:text-white');
-            document.getElementById('tab-providers').classList.add('bg-white', 'text-black');
-
-            document.getElementById('tab-main').classList.remove('bg-white', 'text-black');
-            document.getElementById('tab-main').classList.add('bg-gray-700', 'text-gray-300', 'hover:bg-gray-600', 'hover:text-white');
-
-            document.getElementById('tab-indicators').classList.remove('bg-white', 'text-black'); // NEW
-            document.getElementById('tab-indicators').classList.add('bg-gray-700', 'text-gray-300', 'hover:bg-gray-600', 'hover:text-white'); // NEW
-
-            fetchProviders();
-        }
 
         async function fetchProviders() {
             showLoader();
@@ -1767,17 +1994,37 @@
                         <div class="font-bold text-base">${provider.nombre_proveedor}</div>
                         <div class="text-xs text-gray-500">RFC: ${provider.rfc_proveedor}</div>
                     </td>
-                    <td class="p-3">
+                    <td class="p-3 space-y-2">
                         <div class="text-xs"><span class="font-bold">Banco:</span> ${provider.banco || 'N/A'}</div>
                         <div class="text-xs"><span class="font-bold">Cuenta/CLABE:</span> ${provider.numero_cuenta_clabe || 'N/A'}</div>
                         <div class="text-xs"><span class="font-bold">Tipo Op:</span> ${provider.tipo_operacion || 'N/A'}</div>
                         ${renderValidationButton(provider.id, 'bancaria', provider.validacion_bancaria, userRole === 'admin' || userRole === 'supervisor')}
                     </td>
-                    <td class="p-3">
-                        <textarea readonly class="w-full text-xs border-0 bg-transparent resize-none focus:outline-none" rows="2">${provider.expediente || 'Sin datos'}</textarea>
+                    <td class="p-3 space-y-2">
+                        <div class="text-xs text-gray-700">
+                            ${(() => {
+                                try {
+                                    let expObj = JSON.parse(provider.expediente);
+                                    let html = '<ul class="list-none space-y-1">';
+                                    for(let key in expObj) {
+                                        if (expObj[key]) {
+                                            html += `<li><i class="fas fa-check-circle text-green-500 mr-1"></i> ${key}</li>`;
+                                        } else {
+                                            html += `<li><i class="far fa-circle text-gray-300 mr-1"></i> ${key}</li>`;
+                                        }
+                                    }
+                                    html += '</ul>';
+                                    return html;
+                                } catch(e) {
+                                    return provider.expediente ? `<div class="italic">${provider.expediente}</div>` : 'Sin datos';
+                                }
+                            })()}
+                        </div>
                         ${renderValidationButton(provider.id, 'expediente', provider.validacion_expediente, userRole === 'admin' || userRole === 'supervisor')}
                     </td>
-                    <td class="p-3 text-xs text-gray-600 italic break-words max-w-[150px]">${provider.campo_libre || 'Sin comentarios'}</td>
+                    <td class="p-3 text-xs text-gray-600 italic break-words">
+                        <div>${provider.campo_libre || 'Sin comentarios'}</div>
+                    </td>
                     <td class="p-3 text-center align-middle">
                         <div class="flex justify-center items-center gap-4">
                             <button onclick="openEditProviderModal(${provider.id})" class="text-gray-400 hover:text-black text-lg transition" title="Editar Proveedor"><i class="fas fa-edit"></i></button>
@@ -1790,15 +2037,20 @@
         }
 
         function renderValidationButton(providerId, field, isValid, canEdit) {
-            const icon = isValid ? 'fa-circle-check text-green-500' : 'fa-circle-xmark text-red-500';
-            const title = isValid ? 'Validado' : 'Pendiente de Validar';
+            const icon = isValid ? 'fa-check-circle' : 'fa-times-circle';
+            const text = isValid ? 'Validado' : 'Pendiente';
+            const bgColor = isValid ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600';
+            const cursorStyle = canEdit ? 'cursor-pointer' : 'cursor-default';
+
             if (!canEdit) {
-                return `<div class="text-center text-lg mt-1" title="${title}"><i class="fas ${icon}"></i></div>`;
+                return `<div class="inline-flex items-center justify-center py-1.5 px-3 rounded-lg text-sm font-bold text-white shadow-sm ${bgColor} ${cursorStyle}" title="${text}">
+                            <i class="fas ${icon} mr-1"></i> ${text}
+                        </div>`;
             }
             return `
                 <button onclick="toggleProviderValidation(${providerId}, '${field}', ${isValid})"
-                        class="block w-full text-center text-lg mt-1 transition" title="${title}. Clic para cambiar">
-                    <i class="fas ${icon} hover:opacity-75"></i>
+                        class="inline-flex items-center justify-center py-1.5 px-3 rounded-lg text-sm font-bold text-white shadow-sm transition ${bgColor} ${cursorStyle}" title="${text}. Clic para cambiar">
+                    <i class="fas ${icon} mr-1"></i> ${text}
                 </button>
             `;
         }
@@ -1828,8 +2080,10 @@
             document.getElementById('create-provider-banco').value = '';
             document.getElementById('create-provider-cuenta').value = '';
             document.getElementById('create-provider-tipo-operacion').value = '';
-            document.getElementById('create-provider-expediente').value = '';
             document.getElementById('create-provider-campo-libre').value = '';
+
+            document.querySelectorAll('.create-expediente-chk').forEach(chk => chk.checked = false);
+
             document.getElementById('create-provider-modal').classList.remove('hidden');
         }
 
@@ -1839,17 +2093,31 @@
             const banco = document.getElementById('create-provider-banco').value;
             const numero_cuenta_clabe = document.getElementById('create-provider-cuenta').value;
             const tipo_operacion = document.getElementById('create-provider-tipo-operacion').value;
-            const expediente = document.getElementById('create-provider-expediente').value;
             const campo_libre = document.getElementById('create-provider-campo-libre').value;
+
+            let expObj = {};
+            document.querySelectorAll('.create-expediente-chk').forEach(chk => {
+                expObj[chk.value] = chk.checked;
+            });
+            const expediente = JSON.stringify(expObj);
 
             if (!nombre_proveedor || !rfc_proveedor) {
                 return showToast("El nombre y RFC del proveedor son obligatorios.", true);
             }
+            
+            // Verificar si el RFC ya existe
+            const proveedorExistente = providersData.find(p => p.rfc_proveedor.toUpperCase() === rfc_proveedor.toUpperCase());
+            if (proveedorExistente) {
+                return showToast("❌ Ya existe un registro con este RFC.", true);
+            }
+
+            const payload = { nombre_proveedor, rfc_proveedor, banco, numero_cuenta_clabe, tipo_operacion, expediente, campo_libre };
+            
             showLoader();
             const res = await fetch('/api/providers/', {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ nombre_proveedor, rfc_proveedor, banco, numero_cuenta_clabe, tipo_operacion, expediente, campo_libre })
+                body: JSON.stringify(payload)
             });
             hideLoader();
             if (res.ok) {
@@ -1873,15 +2141,22 @@
             document.getElementById('edit-provider-banco').value = provider.banco;
             document.getElementById('edit-provider-cuenta').value = provider.numero_cuenta_clabe;
             document.getElementById('edit-provider-tipo-operacion').value = provider.tipo_operacion;
-            document.getElementById('edit-provider-expediente').value = provider.expediente;
             document.getElementById('edit-provider-campo-libre').value = provider.campo_libre;
+
+            let expObj = {};
+            try {
+                expObj = JSON.parse(provider.expediente || '{}');
+            } catch(e) {}
+            document.querySelectorAll('.edit-expediente-chk').forEach(chk => {
+                chk.checked = expObj[chk.value] === true;
+            });
 
             // Hide validation toggles if not admin/supervisor
             const validationControls = document.getElementById('edit-provider-validation-controls');
             if (userRole === 'admin' || userRole === 'supervisor') {
                 validationControls.classList.remove('hidden');
-                document.getElementById('edit-provider-bancaria-status').innerHTML = renderValidationIcon(provider.validacion_bancaria);
-                document.getElementById('edit-provider-expediente-status').innerHTML = renderValidationIcon(provider.validacion_expediente);
+                document.getElementById('edit-provider-bancaria-status').innerHTML = renderValidationPill(provider.validacion_bancaria);
+                document.getElementById('edit-provider-expediente-status').innerHTML = renderValidationPill(provider.validacion_expediente);
             } else {
                 validationControls.classList.add('hidden');
             }
@@ -1894,6 +2169,13 @@
             return `<i class="fas ${icon}"></i>`;
         }
 
+        function renderValidationPill(isValid) {
+            const icon = isValid ? 'fa-check-circle' : 'fa-times-circle';
+            const text = isValid ? 'Validado' : 'Pendiente';
+            const bgColor = isValid ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
+            return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${bgColor}"><i class="fas ${icon} mr-1"></i> ${text}</span>`;
+        }
+
         async function saveEditedProvider() {
             if (!currentEditingProviderId) return;
 
@@ -1901,8 +2183,13 @@
             const banco = document.getElementById('edit-provider-banco').value;
             const numero_cuenta_clabe = document.getElementById('edit-provider-cuenta').value;
             const tipo_operacion = document.getElementById('edit-provider-tipo-operacion').value;
-            const expediente = document.getElementById('edit-provider-expediente').value;
             const campo_libre = document.getElementById('edit-provider-campo-libre').value;
+
+            let expObj = {};
+            document.querySelectorAll('.edit-expediente-chk').forEach(chk => {
+                expObj[chk.value] = chk.checked;
+            });
+            const expediente = JSON.stringify(expObj);
 
             const payload = { nombre_proveedor, banco, numero_cuenta_clabe, tipo_operacion, expediente, campo_libre };
 
@@ -1941,23 +2228,23 @@
         // =========================================================
         // Funciones para la Vista de Indicadores (NUEVO)
         // =========================================================
-        function showIndicatorsView() {
-            document.getElementById('main-content-view').classList.add('hidden');
-            document.getElementById('providers-content-view').classList.add('hidden');
-            document.getElementById('indicators-content-view').classList.remove('hidden');
+        // function showIndicatorsView() {
+        //     document.getElementById('main-content-view').classList.add('hidden');
+        //     document.getElementById('providers-content-view').classList.add('hidden');
+        //     document.getElementById('indicators-content-view').classList.remove('hidden');
 
-            document.getElementById('tab-indicators').classList.remove('bg-gray-700', 'text-gray-300', 'hover:bg-gray-600', 'hover:text-white');
-            document.getElementById('tab-indicators').classList.add('bg-white', 'text-black');
+        //     document.getElementById('tab-indicators').classList.remove('bg-gray-700', 'text-gray-300', 'hover:bg-gray-600', 'hover:text-white');
+        //     document.getElementById('tab-indicators').classList.add('bg-white', 'text-black');
 
-            document.getElementById('tab-main').classList.remove('bg-white', 'text-black');
-            document.getElementById('tab-main').classList.add('bg-gray-700', 'text-gray-300', 'hover:bg-gray-600', 'hover:text-white');
+        //     document.getElementById('tab-main').classList.remove('bg-white', 'text-black');
+        //     document.getElementById('tab-main').classList.add('bg-gray-700', 'text-gray-300', 'hover:bg-gray-600', 'hover:text-white');
 
-            document.getElementById('tab-providers').classList.remove('bg-white', 'text-black');
-            document.getElementById('tab-providers').classList.add('bg-gray-700', 'text-gray-300', 'hover:bg-gray-600', 'hover:text-white');
+        //     document.getElementById('tab-providers').classList.remove('bg-white', 'text-black');
+        //     document.getElementById('tab-providers').classList.add('bg-gray-700', 'text-gray-300', 'hover:bg-gray-600', 'hover:text-white');
 
-            // Aquí se cargarían los datos o gráficos para el dashboard de indicadores
-            showToast("📊 Dashboard de Indicadores - En construcción...", false);
-        }
+        //     // Aquí se cargarían los datos o gráficos para el dashboard de indicadores
+        //     showToast("📊 Dashboard de Indicadores - En construcción...", false);
+        // }
     </script>
 </body>
 </html>

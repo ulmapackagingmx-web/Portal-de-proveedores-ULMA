@@ -18,6 +18,7 @@ def create_provider(
     tipo_operacion: Optional[str] = Body(None), # Nuevo campo
     expediente: Optional[str] = Body(None),
     campo_libre: Optional[str] = Body(None),
+    email_contacto: Optional[str] = Body(None), # Nuevo campo
     current_user: DBUser = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -36,7 +37,8 @@ def create_provider(
         numero_cuenta_clabe=numero_cuenta_clabe or "",
         tipo_operacion=tipo_operacion or "", # Nuevo campo
         expediente=expediente or "",
-        campo_libre=campo_libre or ""
+        campo_libre=campo_libre or "",
+        email_contacto=email_contacto or ""
     )
     db.add(new_provider)
     db.commit()
@@ -54,19 +56,23 @@ def get_all_providers(
         raise HTTPException(status_code=403, detail="No autorizado para ver la lista de proveedores")
 
     providers = db.query(DBProvider).all()
-    return [{
-        "id": p.id,
-        "nombre_proveedor": p.nombre_proveedor,
-        "rfc_proveedor": p.rfc_proveedor,
-        "banco": p.banco,
-        "numero_cuenta_clabe": p.numero_cuenta_clabe,
-        "tipo_operacion": p.tipo_operacion, # Nuevo campo
-        "expediente": p.expediente,
-        "validacion_bancaria": p.validacion_bancaria,
-        "validacion_expediente": p.validacion_expediente,
-        "campo_libre": p.campo_libre
-    } for p in providers]
-
+    result = []
+    for p in providers:
+        provider_data = {
+            "id": p.id,
+            "nombre_proveedor": p.nombre_proveedor,
+            "rfc_proveedor": p.rfc_proveedor,
+            "banco": p.banco,
+            "numero_cuenta_clabe": p.numero_cuenta_clabe,
+            "tipo_operacion": p.tipo_operacion, # Nuevo campo
+            "expediente": p.expediente,
+            "validacion_bancaria": p.validacion_bancaria,
+            "validacion_expediente": p.validacion_expediente,
+            "campo_libre": p.campo_libre,
+            "email_contacto": p.email_contacto
+        }
+        result.append(provider_data)
+    return result
 @router.put("/{provider_id}", response_model=dict)
 def update_provider(
     provider_id: int,
@@ -76,6 +82,7 @@ def update_provider(
     tipo_operacion: Optional[str] = Body(None), # Nuevo campo
     expediente: Optional[str] = Body(None),
     campo_libre: Optional[str] = Body(None),
+    email_contacto: Optional[str] = Body(None), # Nuevo campo
     validacion_bancaria: Optional[bool] = Body(None),
     validacion_expediente: Optional[bool] = Body(None),
     current_user: DBUser = Depends(get_current_user),
@@ -100,6 +107,8 @@ def update_provider(
         provider.expediente = expediente
     if campo_libre is not None:
         provider.campo_libre = campo_libre
+    if email_contacto is not None:
+        provider.email_contacto = email_contacto # Nuevo campo
 
     # Solo admin/supervisor pueden cambiar el estado de validación
     if current_user.role in ["admin", "supervisor"]:
@@ -146,7 +155,7 @@ def get_provider_by_rfc(
     if not provider:
         raise HTTPException(status_code=404, detail="Proveedor no encontrado")
         
-    return {
+    provider_data = {
         "id": provider.id,
         "nombre_proveedor": provider.nombre_proveedor,
         "rfc_proveedor": provider.rfc_proveedor,
@@ -156,5 +165,7 @@ def get_provider_by_rfc(
         "expediente": provider.expediente,
         "validacion_bancaria": provider.validacion_bancaria,
         "validacion_expediente": provider.validacion_expediente,
-        "campo_libre": provider.campo_libre
+        "campo_libre": provider.campo_libre,
+        "email_contacto": provider.email_contacto
     }
+    return provider_data

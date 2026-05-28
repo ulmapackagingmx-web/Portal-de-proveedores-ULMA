@@ -6,7 +6,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 
 from database import engine, get_db
-from models import Base, DBUser, DBDocument, DBHistory
+from models import Base, DBUser, DBDocument, DBHistory, DBProvider
 from security import get_current_user, get_password_hash
 from permissions import (
     obtener_usuarios_permitidos,
@@ -104,15 +104,20 @@ def editar_doc(doc_id: int, datos: dict = Body(...), current_user: DBUser = Depe
     doc.centro_costo = datos.get("centro_costo", doc.centro_costo)
     doc.subcatalogo_centro = datos.get("subcatalogo", doc.subcatalogo_centro)
     doc.porcentaje_centro = datos.get("porcentaje_centro", doc.porcentaje_centro)
+    if "porcentaje_pago" in datos:
+        if current_user.role in ["admin", "supervisor"]:
+            doc.porcentaje_pago = datos.get("porcentaje_pago")
     doc.fecha_pago = datos.get("fecha_pago", doc.fecha_pago)
+    doc.fecha_estimada_pago = datos.get("fecha_estimada_pago", doc.fecha_estimada_pago)
     doc.moneda = datos.get("moneda", doc.moneda)
     doc.comentarios = datos.get("comentarios", doc.comentarios)
     
     # Nuevos campos para REFACCIONES
     doc.naturaleza = datos.get("naturaleza", doc.naturaleza)
-    doc.cliente = datos.get("cliente", doc.cliente)
-    doc.modelo_maquina = datos.get("modelo_maquina", doc.modelo_maquina)
-    doc.numero_serie = datos.get("numero_serie", doc.numero_serie)
+    doc.numero_pedido = datos.get("numero_pedido", doc.numero_pedido) # Nuevo campo
+    # doc.cliente = datos.get("cliente", doc.cliente) # Eliminado
+    # doc.modelo_maquina = datos.get("modelo_maquina", doc.modelo_maquina) # Eliminado
+    # doc.numero_serie = datos.get("numero_serie", doc.numero_serie) # Eliminado
     registrar_historial(db, doc.id, "Editado", current_user.username)
     db.commit()
     return {"status": "ok"}
@@ -261,29 +266,92 @@ def descargar_otros_documentos(doc_id: int, db: Session = Depends(get_db)):
         return FileResponse(doc.otros_documentos_pdf, filename=os.path.basename(doc.otros_documentos_pdf))
     raise HTTPException(status_code=404, detail="'Otro Documento' no encontrado")
 
-@router.get("/ver-datos")
-def ver_datos(current_user: DBUser = Depends(get_current_user), db: Session = Depends(get_db)):
-    # Si el usuario es proveedor, solo puede ver sus propios documentos
-    # Si es supervisor, puede ver los suyos y los de sus subordinados
-    # Si es admin, puede ver todos los documentos
+from typing import Optional
 
+@router.get("/ver-datos")
+def ver_datos(
+    skip: int = 0, 
+    limit: int = 50, 
+    search: Optional[str] = None,
+    origen: Optional[str] = None,
+    fecha_inicio: Optional[str] = None,
+    fecha_fin: Optional[str] = None,
+    current_user: DBUser = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
+    from sqlalchemy import or_, and_, func
+    from datetime import datetime
+
+    query = db.query(DBDocument)
+
+    # Filtrar por rol
     if current_user.role == "proveedor":
-        registros = db.query(DBDocument).filter(DBDocument.subido_por == current_user.username).order_by(DBDocument.id.desc()).all()
+        query = query.filter(DBDocument.subido_por == current_user.username)
     elif current_user.role == "supervisor":
         usuarios_subordinados = current_user.subordinados.split(",") if current_user.subordinados else []
         usuarios_subordinados = [u.strip() for u in usuarios_subordinados if u.strip()]
-        
-        # Un supervisor también puede ver sus propios registros
         usuarios_a_mostrar = [current_user.username] + usuarios_subordinados
-        registros = db.query(DBDocument).filter(DBDocument.subido_por.in_(usuarios_a_mostrar)).order_by(DBDocument.id.desc()).all()
-    else: # admin
-        registros = db.query(DBDocument).order_by(DBDocument.id.desc()).all()
-    
-    # Incluir historial para cada registro
+        query = query.filter(DBDocument.subido_por.in_(usuarios_a_mostrar))
+
+    # Filtros de búsqueda (texto)
+    if search:
+        search_term = f"%{search}%"
+        query = query.filter(
+            or_(
+                DBDocument.nombre.ilike(search_term),
+                DBDocument.remitente_rfc.ilike(search_term),
+                DBDocument.uuid_folio.ilike(search_term),
+                DBDocument.centro_costo.ilike(search_term)
+            )
+        )
+        
+    # Filtro de origen
+    if origen:
+        query = query.filter(DBDocument.tipo == origen)
+
+    # Filtros de fecha (sobre fecha_pago o fecha_registro?)
+    if fecha_inicio:
+        query = query.filter(DBDocument.fecha_pago >= fecha_inicio, DBDocument.fecha_pago != "POR DEFINIR")
+    if fecha_fin:
+        query = query.filter(DBDocument.fecha_pago <= fecha_fin, DBDocument.fecha_pago != "POR DEFINIR")
+
+    total_count = query.count()
+
+    # Calcular KPIs sobre los registros filtrados
+    all_kpi_records = query.with_entities(DBDocument.estado_pago, DBDocument.total, DBDocument.fecha_registro).all()
+    hoy = datetime.utcnow()
+    total_pagado_mes = 0.0
+    total_en_proceso = 0.0
+    total_rechazado = 0.0
+    total_pendiente = 0.0
+    for st, tot, f_reg in all_kpi_records:
+        t = tot if tot else 0.0
+        if st == "Pagado" and f_reg and f_reg.year == hoy.year and f_reg.month == hoy.month:
+            total_pagado_mes += t
+        elif st == "Autorizado":
+            total_en_proceso += t
+        elif st == "Rechazado":
+            total_rechazado += t
+        elif st == "Pendiente":
+            total_pendiente += t
+
+    kpis = {
+        "total_registros": total_count,
+        "total_pagado_mes": total_pagado_mes,
+        "total_en_proceso": total_en_proceso,
+        "total_rechazado": total_rechazado,
+        "total_pendiente": total_pendiente,
+    }
+
+    # Paginación
+    registros = query.order_by(DBDocument.id.desc()).offset(skip).limit(limit).all()
+
     resultado = []
     for r in registros:
         historial = db.query(DBHistory).filter(DBHistory.document_id == r.id).order_by(DBHistory.fecha.asc()).all()
         r_dict = {c.name: getattr(r, c.name) for c in r.__table__.columns}
+        if current_user.role not in ["admin", "supervisor"]:
+            r_dict.pop("porcentaje_pago", None)
         r_dict["historial"] = [{
             "accion": h.accion,
             "motivo": h.motivo,
@@ -292,34 +360,14 @@ def ver_datos(current_user: DBUser = Depends(get_current_user), db: Session = De
         } for h in historial]
         resultado.append(r_dict)
 
-    # Calcular Métricas Clave (KPIs)
-    from datetime import datetime
-    hoy = datetime.utcnow()
-    
-    total_pagado_mes = 0.0
-    total_en_proceso = 0.0
-    total_rechazado = 0.0
-    total_pendiente = 0.0
-
-    for r in registros:
-        if r.estado_pago == "Pagado" and r.fecha_registro.year == hoy.year and r.fecha_registro.month == hoy.month:
-            total_pagado_mes += (r.total if r.total is not None else 0.0)
-        elif r.estado_pago == "Autorizado":
-            total_en_proceso += (r.total if r.total is not None else 0.0)
-        elif r.estado_pago == "Rechazado":
-            total_rechazado += (r.total if r.total is not None else 0.0)
-        elif r.estado_pago == "Pendiente":
-            total_pendiente += (r.total if r.total is not None else 0.0)
-
-    kpis = {
-        "total_registros": len(registros),
-        "total_pagado_mes": total_pagado_mes,
-        "total_en_proceso": total_en_proceso,
-        "total_rechazado": total_rechazado,
-        "total_pendiente": total_pendiente,
+    return {
+        "registros": resultado, 
+        "role": current_user.role, 
+        "kpis": kpis,
+        "total_count": total_count,
+        "skip": skip,
+        "limit": limit
     }
-    
-    return {"registros": resultado, "role": current_user.role, "kpis": kpis}
 
 @router.post("/descargar-excel")
 def descargar_excel(datos: dict = Body(...), current_user: DBUser = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -339,9 +387,23 @@ def descargar_excel(datos: dict = Body(...), current_user: DBUser = Depends(get_
     
     docs = query.order_by(DBDocument.id.desc()).all()
     
+    providers = db.query(DBProvider).all()
+    provider_map = {p.rfc_proveedor.upper(): p for p in providers if p.rfc_proveedor}
+
     # Diccionario de todos los campos posibles
     all_data = []
     for d in docs:
+        prov = provider_map.get((d.remitente_rfc or "").upper())
+        # Parsear el expediente
+        expediente_str = ""
+        if prov and prov.expediente:
+            import json
+            try:
+                exp_dict = json.loads(prov.expediente)
+                expediente_str = ", ".join([f"{k}: {'Sí' if v else 'No'}" for k, v in exp_dict.items()])
+            except:
+                expediente_str = prov.expediente
+
         row = {
             "ID": d.id,
             "Origen": d.tipo,
@@ -358,12 +420,23 @@ def descargar_excel(datos: dict = Body(...), current_user: DBUser = Depends(get_
             "Porcentaje": d.porcentaje_centro,
             "Fecha Pago": d.fecha_pago,
             "Estado": d.estado_pago,
+            "Fecha Estimada de Pago": d.fecha_estimada_pago,
             "Uso CFDI": d.uso_cfdi,
             "Forma Pago": d.forma_pago,
             "Método Pago": d.metodo_pago,
             "Clave SAT": d.clave_sat,
             "Descripción SAT": d.descripcion_sat,
-            "Comentarios": d.comentarios
+            "Comentarios": d.comentarios,
+            "Porcentaje Pago (Registro)": d.porcentaje_pago,
+            "Proveedor Registrado": "Sí" if prov else "No",
+            "Banco (Proveedor)": prov.banco if prov else "",
+            "Cuenta/CLABE (Proveedor)": prov.numero_cuenta_clabe if prov else "",
+            "Tipo Operación (Proveedor)": prov.tipo_operacion if prov else "",
+            "Expediente (Proveedor)": expediente_str,
+            "Validación Bancaria": "Sí" if prov and prov.validacion_bancaria else "No",
+            "Validación Expediente": "Sí" if prov and prov.validacion_expediente else "No",
+            "Email (Proveedor)": prov.email_contacto if prov else "",
+            "Campo Libre (Proveedor)": prov.campo_libre if prov else "",
         }
         
         # Si se especificaron campos, filtrar, si no, enviar todos
@@ -402,3 +475,4 @@ def bulk_eliminar_docs(datos: dict = Body(...), current_user: DBUser = Depends(g
             
     db.commit()
     return {"status": "ok", "deleted": deleted_count}
+
