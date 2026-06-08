@@ -8,3 +8,4 @@ xlsxwriter
 openpyxl
 exchangelib
 python-dotenv
+psycopg2-binary
