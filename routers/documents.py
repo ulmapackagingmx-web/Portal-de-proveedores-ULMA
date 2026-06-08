@@ -20,6 +20,20 @@ from permissions import (
 # Creamos el router para documentos
 router = APIRouter(prefix="/api", tags=["Documentos y Utilidades"])
 
+def validate_porcentaje_pago(db: Session, uuid_folio: str, nuevo_porcentaje: float, doc_id_excluido: int = None):
+    if not uuid_folio or uuid_folio == "S/F":
+        return
+    query = db.query(DBDocument).filter(DBDocument.uuid_folio == uuid_folio)
+    if doc_id_excluido:
+        query = query.filter(DBDocument.id != doc_id_excluido)
+    
+    total = sum([(d.porcentaje_pago if d.porcentaje_pago is not None else 0.0) for d in query.all()])
+    if total + nuevo_porcentaje > 100.0:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"La factura o UUID {uuid_folio} ya fue subida y rebasa el 100% de pago."
+        )
+
 def registrar_historial(db: Session, doc_id: int, accion: str, usuario: str, motivo: str = ""):
     # Evitar duplicados exactos en el mismo segundo para el mismo doc
     from datetime import datetime, timedelta
@@ -92,15 +106,22 @@ def editar_doc(doc_id: int, datos: dict = Body(...), current_user: DBUser = Depe
     doc = db.query(DBDocument).filter(DBDocument.id == doc_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Documento no encontrado")
+        
+    uuid_folio = datos.get("folio_factura", doc.uuid_folio)
+    if "porcentaje_pago" in datos and current_user.role in ["admin", "supervisor"]:
+        nuevo_porcentaje = float(datos.get("porcentaje_pago"))
+        validate_porcentaje_pago(db, uuid_folio, nuevo_porcentaje, doc_id_excluido=doc_id)
     
     # Verificar permisos para editar
     if not puede_editar(current_user.username, doc.subido_por, db):
         raise HTTPException(status_code=403, detail="No tienes permisos para editar este registro")
     
+    doc.tipo_tercero = datos.get("tipo_tercero", doc.tipo_tercero)
     doc.remitente_rfc = datos.get("rfc", doc.remitente_rfc)
     doc.nombre = datos.get("nombre", doc.nombre)
     doc.total = datos.get("total", doc.total)
-    doc.uuid_folio = datos.get("folio", doc.uuid_folio)
+    doc.uuid_folio = datos.get("folio_factura", doc.uuid_folio) # Ahora folio factura
+    doc.referencia_pago = datos.get("referencia_pago", doc.referencia_pago) # Nuevo campo
     doc.centro_costo = datos.get("centro_costo", doc.centro_costo)
     doc.subcatalogo_centro = datos.get("subcatalogo", doc.subcatalogo_centro)
     doc.porcentaje_centro = datos.get("porcentaje_centro", doc.porcentaje_centro)
@@ -270,13 +291,14 @@ from typing import Optional
 
 @router.get("/ver-datos")
 def ver_datos(
-    skip: int = 0, 
-    limit: int = 50, 
+    skip: int = 0,
+    limit: int = 50,
     search: Optional[str] = None,
     origen: Optional[str] = None,
+    estado: Optional[str] = None,
     fecha_inicio: Optional[str] = None,
     fecha_fin: Optional[str] = None,
-    current_user: DBUser = Depends(get_current_user), 
+    current_user: DBUser = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     from sqlalchemy import or_, and_, func
@@ -301,6 +323,7 @@ def ver_datos(
                 DBDocument.nombre.ilike(search_term),
                 DBDocument.remitente_rfc.ilike(search_term),
                 DBDocument.uuid_folio.ilike(search_term),
+                DBDocument.referencia_pago.ilike(search_term),
                 DBDocument.centro_costo.ilike(search_term)
             )
         )
@@ -309,16 +332,32 @@ def ver_datos(
     if origen:
         query = query.filter(DBDocument.tipo == origen)
 
-    # Filtros de fecha (sobre fecha_pago o fecha_registro?)
+    # Filtros de fecha (sobre fecha_estimada_pago)
     if fecha_inicio:
-        query = query.filter(DBDocument.fecha_pago >= fecha_inicio, DBDocument.fecha_pago != "POR DEFINIR")
+        query = query.filter(DBDocument.fecha_estimada_pago >= fecha_inicio, DBDocument.fecha_estimada_pago != "POR DEFINIR")
     if fecha_fin:
-        query = query.filter(DBDocument.fecha_pago <= fecha_fin, DBDocument.fecha_pago != "POR DEFINIR")
+        query = query.filter(DBDocument.fecha_estimada_pago <= fecha_fin, DBDocument.fecha_estimada_pago != "POR DEFINIR")
+
+    # Calcular KPIs sobre los registros filtrados (antes del filtro de estado)
+    all_kpi_records = query.with_entities(DBDocument.estado_pago, DBDocument.total, DBDocument.fecha_registro).all()
+
+    # Filtro de estado
+    if estado:
+        if estado == "pagado_mes":
+            query = query.filter(DBDocument.estado_pago == "Pagado")
+            # Podríamos añadir un filtro por mes actual si fuera necesario
+            from datetime import datetime
+            hoy = datetime.utcnow()
+            query = query.filter(func.extract('year', DBDocument.fecha_registro) == hoy.year)
+            query = query.filter(func.extract('month', DBDocument.fecha_registro) == hoy.month)
+        elif estado == "en_proceso":
+            query = query.filter(DBDocument.estado_pago == "Autorizado")
+        elif estado == "rechazado":
+            query = query.filter(DBDocument.estado_pago == "Rechazado")
+        elif estado == "pendiente":
+            query = query.filter(DBDocument.estado_pago == "Pendiente")
 
     total_count = query.count()
-
-    # Calcular KPIs sobre los registros filtrados
-    all_kpi_records = query.with_entities(DBDocument.estado_pago, DBDocument.total, DBDocument.fecha_registro).all()
     hoy = datetime.utcnow()
     total_pagado_mes = 0.0
     total_en_proceso = 0.0
@@ -409,7 +448,9 @@ def descargar_excel(datos: dict = Body(...), current_user: DBUser = Depends(get_
             "Origen": d.tipo,
             "RFC Emisor": d.remitente_rfc,
             "Nombre Emisor": d.nombre,
-            "UUID/Folio": d.uuid_folio,
+            "Tipo de Tercero": d.tipo_tercero,
+            "FOLIO FACTURA": d.uuid_folio,
+            "REFERENCIA DE PAGO": d.referencia_pago,
             "Total": d.total,
             "Moneda": d.moneda,
             "Fecha Emisión": d.fecha_emision,

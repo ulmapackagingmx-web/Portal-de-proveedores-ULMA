@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Body
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 # Importaciones locales
 from database import engine, get_db, SessionLocal
 from models import Base, DBUser
-from security import verify_password, get_password_hash
+from security import verify_password, get_password_hash, get_current_user
 
 # Routers
 from routers.uploads import router as uploads_router
@@ -42,58 +42,49 @@ app.include_router(providers_router)
 def startup_event():
     db = SessionLocal()
     
-    # Verificar si ya existen usuarios
-    usuarios_existentes = db.query(DBUser).count()
+    print("Creando/Verificando usuarios iniciales del sistema...")
     
-    if usuarios_existentes == 0:
-        print("Creando usuarios iniciales del sistema...")
-        
-        # Asegurarse de que no existen para evitar duplicados
-        db.query(DBUser).filter(DBUser.username == "admin").delete()
-        db.query(DBUser).filter(DBUser.username == "usuario1").delete()
-        db.query(DBUser).filter(DBUser.username == "usuario2").delete()
-        db.query(DBUser).filter(DBUser.username == "usuarioA").delete()
-        db.query(DBUser).filter(DBUser.username == "usuarioB").delete()
-        db.query(DBUser).filter(DBUser.username == "usuarioC").delete()
-        db.query(DBUser).filter(DBUser.username == "usuarioD").delete()
-        db.commit()
+    # Lista de usuarios solicitados basada en el Excel proporcionado
+    default_users = [
+        {"username": "gvelazquez", "email": "gvelazquez@ulmapackaging.com.mx", "role": "admin", "subordinados": ""},
+        {"username": "edbravo", "email": "edbravo@ulmapackaging.com.mx", "role": "admin", "subordinados": ""},
+        {"username": "hdominguez", "email": "hdominguez@ulmapackaging.com.mx", "role": "admin", "subordinados": ""},
+        {"username": "janett.barrera", "email": "janett.barrera@ulmapackaging.com.mx", "role": "supervisor", "subordinados": ""},
+        {"username": "ajcontreras", "email": "ajcontreras@ulmapackaging.com.mx", "role": "supervisor", "subordinados": ""},
+        {"username": "rosario.estrada", "email": "rosario.estrada@ulmapackaging.com.mx", "role": "supervisor", "subordinados": ""},
+        {"username": "holopez", "email": "holopez@ulmapackaging.com.mx", "role": "supervisor", "subordinados": ""},
+        {"username": "jprrendon", "email": "jprrendon@ulmapackaging.com.mx", "role": "supervisor", "subordinados": ""},
+        {"username": "dflores", "email": "dflores@ulmapackaging.com.mx", "role": "supervisor", "subordinados": ""},
+        {"username": "diego.beato", "email": "diego.beato@ulmapackaging.com.mx", "role": "supervisor", "subordinados": ""},
+        {"username": "patricia.delacruz", "email": "patricia.delacruz@ulmapackaging.com.mx", "role": "supervisor", "subordinados": ""},
+        {"username": "daniel.munoz", "email": "daniel.munoz@ulmapackaging.com.mx", "role": "supervisor", "subordinados": ""},
+        {"username": "cdvelazquez", "email": "cdvelazquez@ulmapackaging.com.mx", "role": "supervisor", "subordinados": ""},
+        {"username": "yazmin.pedraza", "email": "yazmin.pedraza@ulmapackaging.com.mx", "role": "supervisor", "subordinados": ""},
+        {"username": "jdiaz", "email": "jdiaz@ulmapackaging.com.mx", "role": "supervisor", "subordinados": ""},
+        {"username": "jcarrasco", "email": "jcarrasco@ulmapackaging.com.mx", "role": "supervisor", "subordinados": ""},
+        {"username": "rmhernandez", "email": "rmhernandez@ulmapackaging.com.mx", "role": "supervisor", "subordinados": ""},
+        {"username": "paola.servin", "email": "paola.servin@ulmapackaging.com.mx", "role": "supervisor", "subordinados": ""}
+    ]
 
-        # Usuarios de nivel más bajo (proveedores)
-        usuarios_proveedores = [
-            DBUser(username="usuarioA", hashed_password=get_password_hash("pass123"), role="proveedor", subordinados=""),
-            DBUser(username="usuarioB", hashed_password=get_password_hash("pass123"), role="proveedor", subordinados=""),
-            DBUser(username="usuarioC", hashed_password=get_password_hash("pass123"), role="proveedor", subordinados=""),
-            DBUser(username="usuarioD", hashed_password=get_password_hash("pass123"), role="proveedor", subordinados=""),
-        ]
-        
-        # Usuarios supervisores (tienen subordinados)
-        usuarios_supervisores = [
-            DBUser(username="usuario1", hashed_password=get_password_hash("super123"), role="supervisor", subordinados="usuarioA,usuarioB"),
-            DBUser(username="usuario2", hashed_password=get_password_hash("super123"), role="supervisor", subordinados="usuarioC,usuarioD"),
-        ]
-        
-        # Usuario administrador (tiene acceso a todo)
-        usuario_admin = DBUser(
-            username="admin",
-            hashed_password=get_password_hash("admin123"),
-            role="admin",
-            subordinados="usuario1,usuario2,usuarioA,usuarioB,usuarioC,usuarioD"
-        )
-        
-        # Agregar todos los usuarios
-        for usuario in usuarios_proveedores:
-            db.add(usuario)
-        for usuario in usuarios_supervisores:
-            db.add(usuario)
-        db.add(usuario_admin)
-        
+    usuarios_creados = False
+    for u in default_users:
+        existing = db.query(DBUser).filter(DBUser.username == u["username"]).first()
+        if not existing:
+            new_user = DBUser(
+                username=u["username"],
+                email=u["email"],
+                hashed_password=get_password_hash("Ulma2026*"),
+                role=u["role"],
+                subordinados=u["subordinados"]
+            )
+            db.add(new_user)
+            usuarios_creados = True
+    
+    if usuarios_creados:
         db.commit()
-        
-        print("✅ Usuarios creados:")
-        print("   👑 admin (contraseña: admin123) - Acceso total")
-        print("   👔 usuario1 (contraseña: super123) - Supervisor de usuarioA y usuarioB")
-        print("   👔 usuario2 (contraseña: super123) - Supervisor de usuarioC y usuarioD")
-        print("   👤 usuarioA, usuarioB, usuarioC, usuarioD (contraseña: pass123) - Proveedores")
+        print("✅ Nuevos usuarios creados con la contraseña temporal: Ulma2026*")
+    else:
+        print("✅ Los usuarios ya existen en la base de datos.")
     
     db.close()
 
@@ -125,4 +116,17 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         "role": user.role,
         "permisos": info_usuario
     }
+
+@app.post("/api/cambiar-password")
+def cambiar_password(
+    password_actual: str = Body(...),
+    nuevo_password: str = Body(...),
+    current_user: DBUser = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if not verify_password(password_actual, current_user.hashed_password):
+        raise HTTPException(status_code=400, detail="Contraseña actual incorrecta")
+    current_user.hashed_password = get_password_hash(nuevo_password)
+    db.commit()
+    return {"status": "ok"}
 

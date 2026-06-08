@@ -6,6 +6,7 @@ class DBUser(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True)
+    email = Column(String, default="") # Nuevo campo para correo
     hashed_password = Column(String)
     role = Column(String)  # proveedor, supervisor, admin
     subordinados = Column(String, default="")  # Lista de usuarios subordinados separados por coma
@@ -16,11 +17,13 @@ class DBDocument(Base):
     tipo = Column(String) 
     remitente_rfc = Column(String, index=True)
     nombre = Column(String, default="DESCONOCIDO") 
-    uuid_folio = Column(String, default="S/F") 
+    uuid_folio = Column(String, default="S/F") # Este será para el FOLIO FACTURA
+    referencia_pago = Column(String, default="") # Nuevo campo para REFERENCIA DE PAGO
     total = Column(Float)
     fecha_emision = Column(String, default="POR DEFINIR")  # Fecha del XML/Factura
     fecha_registro = Column(DateTime, default=datetime.utcnow)
     subido_por = Column(String) 
+    tipo_tercero = Column(String, default="Proveedor")
     centro_costo = Column(String, default="Administración")
     subcatalogo_centro = Column(String, default="")  # Subcatálogo del centro de costo
     porcentaje_centro = Column(String, default="100%")
@@ -68,6 +71,7 @@ class DBProvider(Base):
     banco = Column(String, default="")
     numero_cuenta_clabe = Column(String, default="")
     tipo_operacion = Column(String, default="") # Convenio CIE, Interbancario, Mismo Banco
+    referencia_bancaria = Column(String, default="") # Nuevo campo
     expediente = Column(String, default="")
     validacion_bancaria = Column(Boolean, default=False)
     validacion_expediente = Column(Boolean, default=False)

@@ -24,6 +24,20 @@ async def get_or_create_provider(db: Session, rfc: str, nombre: str):
         db.flush() # Para obtener el ID del nuevo proveedor si es necesario
     return provider
 
+def validate_porcentaje_pago(db: Session, uuid_folio: str, nuevo_porcentaje: float, doc_id_excluido: int = None):
+    if not uuid_folio or uuid_folio == "S/F":
+        return
+    query = db.query(DBDocument).filter(DBDocument.uuid_folio == uuid_folio)
+    if doc_id_excluido:
+        query = query.filter(DBDocument.id != doc_id_excluido)
+    
+    total = sum([(d.porcentaje_pago if d.porcentaje_pago is not None else 0.0) for d in query.all()])
+    if total + nuevo_porcentaje > 100.0:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"La factura o UUID {uuid_folio} ya fue subida y rebasa el 100% de pago."
+        )
+
 @router.post("/subir-xml")
 async def procesar_xml(files: List[UploadFile] = File(...), current_user: DBUser = Depends(get_current_user), db: Session = Depends(get_db)):
     try:
@@ -87,8 +101,21 @@ async def procesar_xml(files: List[UploadFile] = File(...), current_user: DBUser
             fecha_xml = root.attrib.get("Fecha", "POR DEFINIR")
             if 'T' in fecha_xml: fecha_xml = fecha_xml.split('T')[0]
             
+            fecha_pago_calc = "POR DEFINIR"
+            if fecha_xml != "POR DEFINIR":
+                try:
+                    from datetime import datetime, timedelta
+                    fecha_obj = datetime.strptime(fecha_xml, "%Y-%m-%d")
+                    fecha_pago_calc = (fecha_obj + timedelta(days=7)).strftime("%Y-%m-%d")
+                except Exception:
+                    pass
+            
+            # Validar que no se pase del 100% (pasamos 0.0 porque el XML entra sin porcentaje)
+            validate_porcentaje_pago(db, uuid_xml, 0.0)
+
             nuevo_doc = DBDocument(
                 tipo="XML",
+                tipo_tercero="Proveedor",
                 remitente_rfc=rfc_emisor, 
                 nombre=nombre_emisor, 
                 total=monto_total, 
@@ -105,7 +132,9 @@ async def procesar_xml(files: List[UploadFile] = File(...), current_user: DBUser
                 descripcion_concepto=descripcion_sat,  # Guardar la descripción del concepto
                 moneda=moneda_xml,
                 comentarios="",
-                fecha_emision=fecha_xml
+                fecha_emision=fecha_xml,
+                fecha_pago=fecha_pago_calc,
+                porcentaje_pago=None
             )
             db.add(nuevo_doc)
             db.flush() # Obtener ID sin cerrar transaccion
@@ -153,18 +182,36 @@ async def procesar_excel(file: UploadFile = File(...), current_user: DBUser = De
             rfc = str(row.get("RFC", "S/R"))
             nombre = str(row.get("Nombre", "DESCONOCIDO"))
             total = float(row.get("Total", 0.0))
-            centro = str(row.get("Centro", "Administración"))
             folio = str(row.get("Folio", "S/F")) 
+            referencia_pago = str(row.get("Referencia Pago", ""))
             moneda = str(row.get("Moneda", "MXN"))
             fecha_val = row.get("Fecha Pago", "POR DEFINIR")
+            comentarios = str(row.get("Comentarios", ""))
+            
             if isinstance(fecha_val, datetime): fecha = fecha_val.strftime("%Y-%m-%d")
             else: fecha = str(fecha_val)
 
             # --- Lógica de Autoregistro de Proveedores (Excel) ---
-            await get_or_create_provider(db, rfc, nombre)
+            if rfc != "S/R" and nombre != "DESCONOCIDO":
+                await get_or_create_provider(db, rfc, nombre)
             # ---------------------------------------------------
+            
+            # Validar que no se pase del 100%
+            validate_porcentaje_pago(db, folio, 100.0)
 
-            doc = DBDocument(tipo="EXCEL", remitente_rfc=rfc, nombre=nombre, total=total, uuid_folio=folio, centro_costo=centro, fecha_pago=fecha, subido_por=current_user.username, moneda=moneda, comentarios="")
+            doc = DBDocument(
+                tipo="EXCEL", 
+                tipo_tercero="Reembolso/Amex", 
+                remitente_rfc=rfc, 
+                nombre=nombre, 
+                total=total, 
+                uuid_folio=folio, 
+                referencia_pago=referencia_pago, 
+                fecha_pago=fecha, 
+                subido_por=current_user.username, 
+                moneda=moneda, 
+                comentarios=comentarios
+            )
             db.add(doc)
             db.flush()
             registrar_historial(db, doc.id, "Creado (Excel)", current_user.username)
@@ -174,12 +221,18 @@ async def procesar_excel(file: UploadFile = File(...), current_user: DBUser = De
 
 @router.post("/subir-manual")
 async def procesar_manual(datos: dict = Body(...), current_user: DBUser = Depends(get_current_user), db: Session = Depends(get_db)):
+    uuid_folio = datos.get("folio_factura", "S/F")
+    porcentaje_pago = float(datos.get("porcentaje_pago", 100.0))
+    validate_porcentaje_pago(db, uuid_folio, porcentaje_pago)
+
     doc = DBDocument(
         tipo="MANUAL",
+        tipo_tercero=datos.get("tipo_tercero", "Proveedor"),
         remitente_rfc=datos.get("rfc"),
         nombre=datos.get("nombre"),
         total=datos.get("total"),
-        uuid_folio=datos.get("folio", "S/F"),
+        uuid_folio=datos.get("folio_factura", "S/F"),
+        referencia_pago=datos.get("referencia_pago", ""),
         centro_costo=datos.get("centro"),
         subcatalogo_centro=datos.get("subcatalogo", ""),
         porcentaje_centro=datos.get("porcentaje", "100%"),

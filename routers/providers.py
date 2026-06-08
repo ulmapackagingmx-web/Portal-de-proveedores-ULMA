@@ -16,6 +16,7 @@ def create_provider(
     banco: Optional[str] = Body(None),
     numero_cuenta_clabe: Optional[str] = Body(None),
     tipo_operacion: Optional[str] = Body(None), # Nuevo campo
+    referencia_bancaria: Optional[str] = Body(None), # Nuevo campo
     expediente: Optional[str] = Body(None),
     campo_libre: Optional[str] = Body(None),
     email_contacto: Optional[str] = Body(None), # Nuevo campo
@@ -36,6 +37,7 @@ def create_provider(
         banco=banco or "",
         numero_cuenta_clabe=numero_cuenta_clabe or "",
         tipo_operacion=tipo_operacion or "", # Nuevo campo
+        referencia_bancaria=referencia_bancaria or "", # Nuevo campo
         expediente=expediente or "",
         campo_libre=campo_libre or "",
         email_contacto=email_contacto or ""
@@ -65,6 +67,7 @@ def get_all_providers(
             "banco": p.banco,
             "numero_cuenta_clabe": p.numero_cuenta_clabe,
             "tipo_operacion": p.tipo_operacion, # Nuevo campo
+            "referencia_bancaria": p.referencia_bancaria, # Nuevo campo
             "expediente": p.expediente,
             "validacion_bancaria": p.validacion_bancaria,
             "validacion_expediente": p.validacion_expediente,
@@ -80,6 +83,7 @@ def update_provider(
     banco: Optional[str] = Body(None),
     numero_cuenta_clabe: Optional[str] = Body(None),
     tipo_operacion: Optional[str] = Body(None), # Nuevo campo
+    referencia_bancaria: Optional[str] = Body(None), # Nuevo campo
     expediente: Optional[str] = Body(None),
     campo_libre: Optional[str] = Body(None),
     email_contacto: Optional[str] = Body(None), # Nuevo campo
@@ -103,6 +107,8 @@ def update_provider(
         provider.numero_cuenta_clabe = numero_cuenta_clabe
     if tipo_operacion is not None:
         provider.tipo_operacion = tipo_operacion # Nuevo campo
+    if referencia_bancaria is not None:
+        provider.referencia_bancaria = referencia_bancaria # Nuevo campo
     if expediente is not None:
         provider.expediente = expediente
     if campo_libre is not None:
@@ -142,6 +148,47 @@ def delete_provider(
     db.commit()
     return {"status": "ok"}
 
+import os
+import shutil
+from fastapi import UploadFile, File
+
+@router.post("/{provider_id}/upload-document")
+def upload_provider_document(
+    provider_id: int,
+    document_type: str = Body(...),
+    file: UploadFile = File(...),
+    current_user: DBUser = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if current_user.role not in ["admin", "supervisor"]:
+        raise HTTPException(status_code=403, detail="No autorizado")
+    
+    provider = db.query(DBProvider).filter(DBProvider.id == provider_id).first()
+    if not provider:
+        raise HTTPException(status_code=404, detail="Proveedor no encontrado")
+
+    upload_dir = f"uploads/providers/{provider_id}"
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    file_extension = os.path.splitext(file.filename)[1]
+    safe_doc_type = document_type.replace(" ", "_").replace("/", "_")
+    file_path = f"{upload_dir}/{safe_doc_type}{file_extension}"
+    
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+        
+    import json
+    try:
+        expediente_data = json.loads(provider.expediente) if provider.expediente else {}
+    except:
+        expediente_data = {}
+        
+    expediente_data[document_type] = file_path
+    provider.expediente = json.dumps(expediente_data)
+    
+    db.commit()
+    return {"status": "ok", "file_path": file_path}
+
 @router.get("/by-rfc/{rfc}", response_model=dict)
 def get_provider_by_rfc(
     rfc: str,
@@ -162,6 +209,7 @@ def get_provider_by_rfc(
         "banco": provider.banco,
         "numero_cuenta_clabe": provider.numero_cuenta_clabe,
         "tipo_operacion": provider.tipo_operacion, # Nuevo campo
+        "referencia_bancaria": provider.referencia_bancaria, # Nuevo campo
         "expediente": provider.expediente,
         "validacion_bancaria": provider.validacion_bancaria,
         "validacion_expediente": provider.validacion_expediente,
