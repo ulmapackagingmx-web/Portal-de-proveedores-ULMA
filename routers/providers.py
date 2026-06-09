@@ -31,6 +31,15 @@ def create_provider(
     if existing_provider:
         raise HTTPException(status_code=400, detail="Ya existe un proveedor con este RFC")
 
+    import json
+    from datetime import datetime
+
+    historial_inicial = [{
+        "accion": "Creado",
+        "usuario": current_user.username,
+        "fecha": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    }]
+
     new_provider = DBProvider(
         nombre_proveedor=nombre_proveedor,
         rfc_proveedor=rfc_proveedor,
@@ -40,7 +49,8 @@ def create_provider(
         referencia_bancaria=referencia_bancaria or "", # Nuevo campo
         expediente=expediente or "",
         campo_libre=campo_libre or "",
-        email_contacto=email_contacto or ""
+        email_contacto=email_contacto or "",
+        historial=json.dumps(historial_inicial)
     )
     db.add(new_provider)
     db.commit()
@@ -59,7 +69,13 @@ def get_all_providers(
 
     providers = db.query(DBProvider).all()
     result = []
+    import json
     for p in providers:
+        try:
+            historial = json.loads(p.historial) if p.historial else []
+        except:
+            historial = []
+
         provider_data = {
             "id": p.id,
             "nombre_proveedor": p.nombre_proveedor,
@@ -72,7 +88,8 @@ def get_all_providers(
             "validacion_bancaria": p.validacion_bancaria,
             "validacion_expediente": p.validacion_expediente,
             "campo_libre": p.campo_libre,
-            "email_contacto": p.email_contacto
+            "email_contacto": p.email_contacto,
+            "historial": historial
         }
         result.append(provider_data)
     return result
@@ -99,33 +116,60 @@ def update_provider(
     if not puede_editar_proveedor(current_user.username, provider.nombre_proveedor, db):
         raise HTTPException(status_code=403, detail="No autorizado para editar este proveedor")
 
-    if nombre_proveedor is not None:
+    import json
+    from datetime import datetime
+    try:
+        historial = json.loads(provider.historial) if provider.historial else []
+    except:
+        historial = []
+
+    cambios = []
+
+    if nombre_proveedor is not None and provider.nombre_proveedor != nombre_proveedor:
+        cambios.append("Nombre")
         provider.nombre_proveedor = nombre_proveedor
-    if banco is not None:
+    if banco is not None and provider.banco != banco:
+        cambios.append("Banco")
         provider.banco = banco
-    if numero_cuenta_clabe is not None:
+    if numero_cuenta_clabe is not None and provider.numero_cuenta_clabe != numero_cuenta_clabe:
+        cambios.append("Cuenta/CLABE")
         provider.numero_cuenta_clabe = numero_cuenta_clabe
-    if tipo_operacion is not None:
+    if tipo_operacion is not None and provider.tipo_operacion != tipo_operacion:
+        cambios.append("Tipo Operación")
         provider.tipo_operacion = tipo_operacion # Nuevo campo
-    if referencia_bancaria is not None:
+    if referencia_bancaria is not None and provider.referencia_bancaria != referencia_bancaria:
+        cambios.append("Ref. Bancaria")
         provider.referencia_bancaria = referencia_bancaria # Nuevo campo
-    if expediente is not None:
+    if expediente is not None and provider.expediente != expediente:
+        cambios.append("Expediente")
         provider.expediente = expediente
-    if campo_libre is not None:
+    if campo_libre is not None and provider.campo_libre != campo_libre:
+        cambios.append("Campo Libre")
         provider.campo_libre = campo_libre
-    if email_contacto is not None:
+    if email_contacto is not None and provider.email_contacto != email_contacto:
+        cambios.append("Email")
         provider.email_contacto = email_contacto # Nuevo campo
 
     # Solo admin/supervisor pueden cambiar el estado de validación
     if current_user.role in ["admin", "supervisor"]:
-        if validacion_bancaria is not None:
+        if validacion_bancaria is not None and provider.validacion_bancaria != validacion_bancaria:
+            cambios.append("Val. Bancaria")
             provider.validacion_bancaria = validacion_bancaria
-        if validacion_expediente is not None:
+        if validacion_expediente is not None and provider.validacion_expediente != validacion_expediente:
+            cambios.append("Val. Expediente")
             provider.validacion_expediente = validacion_expediente
     else:
         # Asegurarse de que otros roles no puedan cambiar las validaciones
         if validacion_bancaria is not None or validacion_expediente is not None:
             raise HTTPException(status_code=403, detail="No autorizado para modificar estados de validación")
+
+    if cambios:
+        historial.insert(0, {
+            "accion": f"Editó: {', '.join(cambios)}",
+            "usuario": current_user.username,
+            "fecha": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        })
+        provider.historial = json.dumps(historial)
 
     db.commit()
     db.refresh(provider)
@@ -185,7 +229,19 @@ def upload_provider_document(
         
     expediente_data[document_type] = file_path
     provider.expediente = json.dumps(expediente_data)
-    
+
+    try:
+        historial = json.loads(provider.historial) if provider.historial else []
+    except:
+        historial = []
+
+    historial.insert(0, {
+        "accion": f"Subió documento: {document_type}",
+        "usuario": current_user.username,
+        "fecha": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    })
+    provider.historial = json.dumps(historial)
+
     db.commit()
     return {"status": "ok", "file_path": file_path}
 

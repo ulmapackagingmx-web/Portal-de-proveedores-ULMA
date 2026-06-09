@@ -77,4 +77,5 @@ class DBProvider(Base):
     validacion_expediente = Column(Boolean, default=False)
     campo_libre = Column(String, default="")
     email_contacto = Column(String, default="")
+    historial = Column(String, default="[]") # Historial de cambios en JSON
 

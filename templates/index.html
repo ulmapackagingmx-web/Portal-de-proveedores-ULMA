@@ -496,10 +496,10 @@
                                 <tr>
                                     <th class="p-3 border-b border-gray-300 w-[20%]">Nombre</th>
                                     <th class="p-3 border-b border-gray-300 w-[15%]">RFC</th>
-                                    <th class="p-3 border-b border-gray-300 w-[20%]">Email</th>
+                                    <th class="p-3 border-b border-gray-300 w-[15%]">Email</th>
                                     <th class="p-3 border-b border-gray-300 text-center w-[15%]">Val. Expediente</th>
                                     <th class="p-3 border-b border-gray-300 w-[20%]">Comentarios</th>
-                                    <th class="p-3 border-b border-gray-300 text-center w-[10%]">Config</th>
+                                    <th class="p-3 border-b border-gray-300 text-center w-[15%]">Config</th>
                                 </tr>
                             </thead>
                             <tbody id="providers-expedientes-table" class="text-gray-700 font-medium text-sm"></tbody>
@@ -2635,6 +2635,32 @@
             modal.classList.remove('hidden');
         }
 
+        function showProviderHistory(id) {
+            const provider = providersData.find(r => r.id === id);
+            if (!provider || !provider.historial) return;
+
+            const modal = document.getElementById('history-modal');
+            const content = document.getElementById('history-content');
+            content.innerHTML = '';
+
+            if (provider.historial.length > 0) {
+                provider.historial.forEach(h => {
+                    const div = document.createElement('div');
+                    div.className = 'text-sm p-2 border-b border-gray-200 last:border-0';
+                    div.innerHTML = `
+                        <div class="font-bold text-gray-800">${h.accion}</div>
+                        <div class="text-xs text-gray-500">Por: <span class="font-semibold text-blue-600">${h.usuario}</span></div>
+                        <div class="text-xs text-gray-400">Fecha: ${h.fecha}</div>
+                    `;
+                    content.appendChild(div);
+                });
+            } else {
+                content.innerHTML = '<p class="text-sm text-gray-500">No hay historial para este proveedor.</p>';
+            }
+
+            modal.classList.remove('hidden');
+        }
+
         // =========================================================
         // Timeout de Inactividad por Seguridad
         // =========================================================
@@ -2757,6 +2783,11 @@
                     </td>
                     <td class="p-3 text-center align-middle">
                         <div class="flex justify-center items-center gap-4">
+                            <div class="hs-tooltip inline-block">
+                                <button onclick="showProviderHistory(${provider.id})" class="hs-tooltip-toggle text-gray-400 hover:text-blue-600 text-lg transition">
+                                    <i class="fas fa-history"></i>
+                                </button>
+                            </div>
                             <button onclick="openEditExpedienteModal(${provider.id})" class="text-gray-400 hover:text-black text-lg transition" title="Editar Expediente"><i class="fas fa-edit"></i></button>
                             <button onclick="deleteProvider(${provider.id})" class="text-gray-400 hover:text-red-600 text-lg transition ${userRole === 'admin' ? '' : 'hidden'}" title="Eliminar"><i class="fas fa-trash-alt"></i></button>
                         </div>
@@ -2793,6 +2824,11 @@
                     </td>
                     <td class="p-3 text-center align-middle">
                         <div class="flex justify-center items-center gap-4">
+                            <div class="hs-tooltip inline-block">
+                                <button onclick="showProviderHistory(${provider.id})" class="hs-tooltip-toggle text-gray-400 hover:text-blue-600 text-lg transition">
+                                    <i class="fas fa-history"></i>
+                                </button>
+                            </div>
                             <button onclick="openEditBancoModal(${provider.id})" class="text-gray-400 hover:text-black text-lg transition" title="Editar Banco"><i class="fas fa-edit"></i></button>
                         </div>
                     </td>
