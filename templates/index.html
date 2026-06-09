@@ -482,7 +482,7 @@
             </div>
           </div>
           <div id="segment-2" role="tabpanel" aria-labelledby="segment-item-2" class="hidden h-full">
-            <div class="flex-col h-full">
+            <div class="flex flex-col h-full">
                 <div class="bg-white p-4 shadow rounded-t-lg border-b-2 border-gray-200">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-2xl font-black text-black leading-tight">EXPEDIENTES</h2>
@@ -510,7 +510,7 @@
           </div>
 
           <div id="segment-3" role="tabpanel" aria-labelledby="segment-item-3" class="hidden h-full">
-            <div class="flex-col h-full">
+            <div class="flex flex-col h-full">
                 <div class="bg-white p-4 shadow rounded-t-lg border-b-2 border-gray-200">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-2xl font-black text-black leading-tight">DATOS BANCARIOS</h2>
@@ -2786,6 +2786,7 @@
                             <div class="hs-tooltip inline-block">
                                 <button onclick="showProviderHistory(${provider.id})" class="hs-tooltip-toggle text-gray-400 hover:text-blue-600 text-lg transition">
                                     <i class="fas fa-history"></i>
+                                    <span class="hs-tooltip-content hs-tooltip-shown:opacity-100 hs-tooltip-shown:visible opacity-0 transition-opacity inline-block absolute invisible z-10 py-1 px-2 bg-gray-900 text-xs font-medium text-white rounded-lg shadow-sm" role="tooltip">Ver Historial</span>
                                 </button>
                             </div>
                             <button onclick="openEditExpedienteModal(${provider.id})" class="text-gray-400 hover:text-black text-lg transition" title="Editar Expediente"><i class="fas fa-edit"></i></button>
@@ -2827,6 +2828,7 @@
                             <div class="hs-tooltip inline-block">
                                 <button onclick="showProviderHistory(${provider.id})" class="hs-tooltip-toggle text-gray-400 hover:text-blue-600 text-lg transition">
                                     <i class="fas fa-history"></i>
+                                    <span class="hs-tooltip-content hs-tooltip-shown:opacity-100 hs-tooltip-shown:visible opacity-0 transition-opacity inline-block absolute invisible z-10 py-1 px-2 bg-gray-900 text-xs font-medium text-white rounded-lg shadow-sm" role="tooltip">Ver Historial</span>
                                 </button>
                             </div>
                             <button onclick="openEditBancoModal(${provider.id})" class="text-gray-400 hover:text-black text-lg transition" title="Editar Banco"><i class="fas fa-edit"></i></button>
