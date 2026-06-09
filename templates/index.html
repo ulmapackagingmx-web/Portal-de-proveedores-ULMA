@@ -489,10 +489,9 @@
                         <button onclick="openCreateExpedienteModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-sm font-bold transition" data-hs-overlay="#edit-expediente-modal"><i class="fas fa-plus mr-1"></i> Nuevo Expediente</button>
                     </div>
                 </div>
-                <div class="bg-white shadow rounded-b-lg overflow-hidden flex-grow relative">
-                    <div class="absolute inset-0 overflow-auto">
-                        <table class="w-full text-left text-base relative">
-                            <thead class="bg-gray-200 text-gray-800 uppercase tracking-wider text-xs sticky top-0 z-10 shadow-sm whitespace-nowrap">
+                <div class="bg-white shadow rounded-b-lg overflow-x-auto overflow-y-auto flex-grow min-h-0">
+                    <table class="w-full text-left text-base relative">
+                        <thead class="bg-gray-200 text-gray-800 uppercase tracking-wider text-xs sticky top-0 z-10 shadow-sm whitespace-nowrap">
                                 <tr>
                                     <th class="p-3 border-b border-gray-300 w-[20%]">Nombre</th>
                                     <th class="p-3 border-b border-gray-300 w-[15%]">RFC</th>
@@ -503,8 +502,7 @@
                                 </tr>
                             </thead>
                             <tbody id="providers-expedientes-table" class="text-gray-700 font-medium text-sm"></tbody>
-                        </table>
-                    </div>
+                    </table>
                 </div>
             </div>
           </div>
@@ -517,10 +515,9 @@
                         <button onclick="openCreateBancoModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-sm font-bold transition" data-hs-overlay="#edit-banco-modal"><i class="fas fa-plus mr-1"></i> Nuevo Proveedor</button>
                     </div>
                 </div>
-                <div class="bg-white shadow rounded-b-lg overflow-hidden flex-grow relative">
-                    <div class="absolute inset-0 overflow-auto">
-                        <table class="w-full text-left text-base relative">
-                            <thead class="bg-gray-200 text-gray-800 uppercase tracking-wider text-xs sticky top-0 z-10 shadow-sm whitespace-nowrap">
+                <div class="bg-white shadow rounded-b-lg overflow-x-auto overflow-y-auto flex-grow min-h-0">
+                    <table class="w-full text-left text-base relative">
+                        <thead class="bg-gray-200 text-gray-800 uppercase tracking-wider text-xs sticky top-0 z-10 shadow-sm whitespace-nowrap">
                                 <tr>
                                     <th class="p-3 border-b border-gray-300 w-[20%]">Razón Social</th>
                                     <th class="p-3 border-b border-gray-300 w-[15%]">RFC</th>
@@ -533,8 +530,7 @@
                                 </tr>
                             </thead>
                             <tbody id="providers-bancarios-table" class="text-gray-700 font-medium text-sm"></tbody>
-                        </table>
-                    </div>
+                    </table>
                 </div>
             </div>
           </div>
@@ -2984,7 +2980,12 @@
                 }
                 return true;
             } else {
-                showToast("❌ Error al crear expediente. El RFC ya podría existir.", true);
+                try {
+                    const err = await res.json();
+                    showToast("❌ Error: " + (err.detail || "No se pudo crear"), true);
+                } catch {
+                    showToast("❌ Error al crear expediente.", true);
+                }
                 return false;
             }
         }
@@ -3225,7 +3226,12 @@
                 await fetchProviders();
                 return true;
             } else {
-                showToast("❌ Error al crear proveedor.", true);
+                try {
+                    const err = await res.json();
+                    showToast("❌ Error: " + (err.detail || "No se pudo crear"), true);
+                } catch {
+                    showToast("❌ Error al crear proveedor.", true);
+                }
                 return false;
             }
         }

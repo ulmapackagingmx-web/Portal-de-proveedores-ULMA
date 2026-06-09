@@ -41,7 +41,45 @@ app.include_router(providers_router)
 @app.on_event("startup")
 def startup_event():
     db = SessionLocal()
-    
+
+    from sqlalchemy import text
+    try:
+        db.execute(text("ALTER TABLE documents ADD COLUMN naturaleza VARCHAR DEFAULT ''"))
+        db.commit()
+    except Exception:
+        db.rollback()
+    try:
+        db.execute(text("ALTER TABLE documents ADD COLUMN cliente VARCHAR DEFAULT ''"))
+        db.commit()
+    except Exception:
+        db.rollback()
+    try:
+        db.execute(text("ALTER TABLE documents ADD COLUMN modelo_maquina VARCHAR DEFAULT ''"))
+        db.commit()
+    except Exception:
+        db.rollback()
+    try:
+        db.execute(text("ALTER TABLE documents ADD COLUMN numero_serie VARCHAR DEFAULT ''"))
+        db.commit()
+    except Exception:
+        db.rollback()
+
+    try:
+        db.execute(text("ALTER TABLE providers ADD COLUMN tipo_operacion VARCHAR DEFAULT ''"))
+        db.commit()
+    except Exception:
+        db.rollback()
+    try:
+        db.execute(text("ALTER TABLE providers ADD COLUMN referencia_bancaria VARCHAR DEFAULT ''"))
+        db.commit()
+    except Exception:
+        db.rollback()
+    try:
+        db.execute(text("ALTER TABLE providers ADD COLUMN email_contacto VARCHAR DEFAULT ''"))
+        db.commit()
+    except Exception:
+        db.rollback()
+
     print("Creando/Verificando usuarios iniciales del sistema...")
     
     # Lista de usuarios solicitados basada en el Excel proporcionado
