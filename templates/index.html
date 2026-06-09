@@ -483,16 +483,16 @@
           </div>
           <div id="segment-2" role="tabpanel" aria-labelledby="segment-item-2" class="hidden h-full">
             <div class="flex flex-col h-full">
-                <div class="bg-white p-4 shadow rounded-t-lg border-b-2 border-gray-200">
+                <div class="bg-white p-4 shadow rounded-t-lg border-b-2 border-gray-200 shrink-0">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-2xl font-black text-black leading-tight">EXPEDIENTES</h2>
                         <button onclick="openCreateExpedienteModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-sm font-bold transition" data-hs-overlay="#edit-expediente-modal"><i class="fas fa-plus mr-1"></i> Nuevo Expediente</button>
                     </div>
                 </div>
-                <div class="bg-white shadow rounded-b-lg overflow-hidden flex-grow">
-                    <div class="overflow-x-auto h-full">
-                        <table class="w-full text-left text-base">
-                            <thead class="bg-gray-200 text-gray-800 uppercase tracking-wider text-xs">
+                <div class="bg-white shadow rounded-b-lg overflow-hidden flex-grow relative">
+                    <div class="absolute inset-0 overflow-auto">
+                        <table class="w-full text-left text-base relative">
+                            <thead class="bg-gray-200 text-gray-800 uppercase tracking-wider text-xs sticky top-0 z-10 shadow-sm whitespace-nowrap">
                                 <tr>
                                     <th class="p-3 border-b border-gray-300 w-[20%]">Nombre</th>
                                     <th class="p-3 border-b border-gray-300 w-[15%]">RFC</th>
@@ -511,16 +511,16 @@
 
           <div id="segment-3" role="tabpanel" aria-labelledby="segment-item-3" class="hidden h-full">
             <div class="flex flex-col h-full">
-                <div class="bg-white p-4 shadow rounded-t-lg border-b-2 border-gray-200">
+                <div class="bg-white p-4 shadow rounded-t-lg border-b-2 border-gray-200 shrink-0">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-2xl font-black text-black leading-tight">DATOS BANCARIOS</h2>
                         <button onclick="openCreateBancoModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-sm font-bold transition" data-hs-overlay="#edit-banco-modal"><i class="fas fa-plus mr-1"></i> Nuevo Proveedor</button>
                     </div>
                 </div>
-                <div class="bg-white shadow rounded-b-lg overflow-hidden flex-grow">
-                    <div class="overflow-x-auto h-full">
-                        <table class="w-full text-left text-base">
-                            <thead class="bg-gray-200 text-gray-800 uppercase tracking-wider text-xs">
+                <div class="bg-white shadow rounded-b-lg overflow-hidden flex-grow relative">
+                    <div class="absolute inset-0 overflow-auto">
+                        <table class="w-full text-left text-base relative">
+                            <thead class="bg-gray-200 text-gray-800 uppercase tracking-wider text-xs sticky top-0 z-10 shadow-sm whitespace-nowrap">
                                 <tr>
                                     <th class="p-3 border-b border-gray-300 w-[20%]">Razón Social</th>
                                     <th class="p-3 border-b border-gray-300 w-[15%]">RFC</th>
@@ -1468,6 +1468,15 @@
             } else {
                 document.getElementById('btn-exportar').classList.add('hidden');
                 document.getElementById('btn-reset').classList.add('hidden');
+            }
+            
+            // Check visibility for Expedientes / Bancos
+            if(userRole === 'admin' || authToken === 'janett.barrera') {
+                document.getElementById('segment-item-2').style.display = 'inline-block';
+                document.getElementById('segment-item-3').style.display = 'inline-block';
+            } else {
+                document.getElementById('segment-item-2').style.display = 'none';
+                document.getElementById('segment-item-3').style.display = 'none';
             }
             
             // Inicializar Gridstack al mostrar dashboard
