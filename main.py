@@ -84,6 +84,11 @@ def startup_event():
         db.commit()
     except Exception:
         db.rollback()
+    try:
+        db.execute(text("ALTER TABLE providers ADD COLUMN historial VARCHAR DEFAULT '[]'"))
+        db.commit()
+    except Exception:
+        db.rollback()
 
     print("Creando/Verificando usuarios iniciales del sistema...")
     
