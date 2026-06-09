@@ -50,9 +50,9 @@ class DBDocument(Base):
     # Nuevos campos para "REFACCIONES"
     naturaleza = Column(String, default="")  # Venta, Costo de venta, Garantía
     numero_pedido = Column(String, default="") # Nuevo campo para número de pedido
-    # cliente = Column(String, default="") # Eliminado
-    # modelo_maquina = Column(String, default="") # Eliminado
-    # numero_serie = Column(String, default="") # Eliminado
+    cliente = Column(String, default="")
+    modelo_maquina = Column(String, default="")
+    numero_serie = Column(String, default="")
 
 class DBHistory(Base):
     __tablename__ = "history"
