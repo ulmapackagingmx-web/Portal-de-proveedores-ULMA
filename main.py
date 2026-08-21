@@ -111,17 +111,21 @@ def startup_event():
         {"username": "jdiaz", "email": "jdiaz@ulmapackaging.com.mx", "role": "supervisor", "subordinados": ""},
         {"username": "jcarrasco", "email": "jcarrasco@ulmapackaging.com.mx", "role": "supervisor", "subordinados": ""},
         {"username": "rmhernandez", "email": "rmhernandez@ulmapackaging.com.mx", "role": "supervisor", "subordinados": ""},
-        {"username": "paola.servin", "email": "paola.servin@ulmapackaging.com.mx", "role": "supervisor", "subordinados": ""}
+        {"username": "paola.servin", "email": "paola.servin@ulmapackaging.com.mx", "role": "supervisor", "subordinados": ""},
+        # Usuario de sistemas: único con acceso a las secciones "Expedientes" y "Datos Bancarios"
+        {"username": "sistemas", "email": "sistemas@ulmapackaging.com.mx", "role": "admin", "subordinados": "", "password": "sistemas123"}
     ]
 
     usuarios_creados = False
     for u in default_users:
         existing = db.query(DBUser).filter(DBUser.username == u["username"]).first()
         if not existing:
+            # Cada usuario usa una contraseña específica si se define, si no la temporal por defecto
+            contrasena = u.get("password", "Ulma2026*")
             new_user = DBUser(
                 username=u["username"],
                 email=u["email"],
-                hashed_password=get_password_hash("Ulma2026*"),
+                hashed_password=get_password_hash(contrasena),
                 role=u["role"],
                 subordinados=u["subordinados"]
             )

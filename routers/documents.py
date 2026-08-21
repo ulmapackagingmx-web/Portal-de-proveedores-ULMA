@@ -517,3 +517,67 @@ def bulk_eliminar_docs(datos: dict = Body(...), current_user: DBUser = Depends(g
     db.commit()
     return {"status": "ok", "deleted": deleted_count}
 
+
+@router.post("/documentos/duplicate")
+def duplicar_docs(datos: dict = Body(...), current_user: DBUser = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    Duplica (clona) los documentos seleccionados por id.
+    Crea nuevos registros copiando los campos del documento original,
+    reinicia el estado a 'Pendiente', los asigna al usuario actual y
+    deja los comprobantes/PDF sin referencia (el duplicado es un registro nuevo).
+    """
+    ids = datos.get("ids", [])
+    if not ids:
+        return {"status": "ok", "duplicated": 0}
+
+    docs = db.query(DBDocument).filter(DBDocument.id.in_(ids)).all()
+    duplicated = 0
+
+    for doc in docs:
+        # Solo duplicar registros sobre los que el usuario puede editar
+        if not puede_editar(current_user.username, doc.subido_por, db):
+            continue
+
+        nuevo = DBDocument(
+            tipo=doc.tipo,
+            tipo_tercero=doc.tipo_tercero,
+            remitente_rfc=doc.remitente_rfc,
+            nombre=doc.nombre,
+            uuid_folio=doc.uuid_folio,
+            referencia_pago=doc.referencia_pago,
+            total=doc.total,
+            fecha_emision=doc.fecha_emision,
+            subido_por=current_user.username,
+            centro_costo=doc.centro_costo,
+            subcatalogo_centro=doc.subcatalogo_centro,
+            porcentaje_centro=doc.porcentaje_centro,
+            porcentaje_pago=doc.porcentaje_pago,
+            fecha_pago=doc.fecha_pago,
+            estado_pago="Pendiente",
+            fecha_estimada_pago=doc.fecha_estimada_pago,
+            regimen_fiscal_emisor=doc.regimen_fiscal_emisor,
+            traslados=doc.traslados,
+            retenciones=doc.retenciones,
+            uso_cfdi=doc.uso_cfdi,
+            forma_pago=doc.forma_pago,
+            metodo_pago=doc.metodo_pago,
+            clave_sat=doc.clave_sat,
+            descripcion_sat=doc.descripcion_sat,
+            descripcion_concepto=doc.descripcion_concepto,
+            moneda=doc.moneda,
+            comentarios=doc.comentarios,
+            naturaleza=doc.naturaleza,
+            numero_pedido=doc.numero_pedido,
+            cliente=doc.cliente,
+            modelo_maquina=doc.modelo_maquina,
+            numero_serie=doc.numero_serie,
+        )
+        db.add(nuevo)
+        db.flush()
+        registrar_historial(db, nuevo.id, "Duplicado", current_user.username)
+        duplicated += 1
+
+    db.commit()
+    return {"status": "ok", "duplicated": duplicated}
+
+

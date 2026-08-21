@@ -399,6 +399,7 @@
                             <button onclick="fetchData()" class="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-bold rounded-lg border border-transparent bg-gray-200 text-black hover:bg-gray-300 transition-all"><i class="fas fa-sync"></i> Actualizar</button>
                             <button id="btn-exportar" onclick="downloadExcel()" data-hs-overlay="#export-modal" class="hidden py-2 px-3 inline-flex items-center gap-x-2 text-sm font-bold rounded-lg border border-transparent ulma-red ulma-red-hover text-white shadow-sm transition-all"><i class="fas fa-download mr-1"></i> Exportar</button>
                             <button id="btn-bulk-delete" onclick="bulkDelete()" class="hidden py-2 px-3 inline-flex items-center gap-x-2 text-sm font-bold rounded-lg border border-transparent bg-gray-600 text-white hover:bg-gray-700 shadow-sm transition-all"><i class="fas fa-trash-sweep mr-1"></i> Eliminar Selección</button>
+                            <button id="btn-bulk-duplicate" onclick="bulkDuplicate()" class="hidden py-2 px-3 inline-flex items-center gap-x-2 text-sm font-bold rounded-lg border border-transparent bg-blue-600 text-white hover:bg-blue-700 shadow-sm transition-all"><i class="fas fa-copy mr-1"></i> Duplicar Selección</button>
                             <button id="btn-reset" onclick="resetDB()" class="hidden py-2 px-3 inline-flex items-center gap-x-2 text-sm font-bold rounded-lg border border-transparent bg-red-900 text-white hover:bg-red-950 shadow-sm transition-all" title="Borrar BD"><i class="fas fa-skull-crossbones mr-1"></i> Reset BD</button>
                         </div>
                     </div>
@@ -1466,8 +1467,9 @@
                 document.getElementById('btn-reset').classList.add('hidden');
             }
             
-            // Check visibility for Expedientes / Bancos
-            if(userRole === 'admin' || authToken === 'janett.barrera') {
+            // Check visibility for Expedientes / Bancos.
+            // SOLO el usuario "sistemas" puede ver estas secciones; el resto quedan ocultas.
+            if(authToken === 'sistemas') {
                 document.getElementById('segment-item-2').style.display = 'inline-block';
                 document.getElementById('segment-item-3').style.display = 'inline-block';
             } else {
@@ -2465,9 +2467,11 @@
             if (count > 0) {
                 document.getElementById('bulk-controls').classList.remove('hidden');
                 document.getElementById('btn-bulk-delete').classList.remove('hidden');
+                document.getElementById('btn-bulk-duplicate').classList.remove('hidden');
             } else {
                 document.getElementById('bulk-controls').classList.add('hidden');
                 document.getElementById('btn-bulk-delete').classList.add('hidden');
+                document.getElementById('btn-bulk-duplicate').classList.add('hidden');
                 document.getElementById('select-all').checked = false;
             }
         }
@@ -2610,6 +2614,30 @@
                 } else {
                     showToast('❌ Error al eliminar los registros.', true);
                 }
+            }
+        }
+
+        async function bulkDuplicate() {
+            const selectedIds = Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => parseInt(cb.value));
+            if (selectedIds.length === 0) return;
+            
+            showLoader();
+            const res = await fetch('/api/documentos/duplicate', {
+                method: 'POST',
+                headers: { 
+                    'Authorization': `Bearer ${authToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ ids: selectedIds })
+            });
+            hideLoader();
+
+            if (res.ok) {
+                const data = await res.json();
+                showToast(`✅ Se duplicaron ${data.duplicated} registros exitosamente.`);
+                fetchData();
+            } else {
+                showToast('❌ Error al duplicar los registros.', true);
             }
         }
 
