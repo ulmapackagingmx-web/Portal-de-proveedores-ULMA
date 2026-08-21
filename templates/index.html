@@ -316,14 +316,14 @@
                                     <h2 class="font-bold text-sm uppercase text-gray-800"><i class="fas fa-list-ul mr-1 text-indigo-500"></i> Próximos Pagos</h2>
                                 </div>
                                 <div id="selected-date-summary-container" class="mt-auto pt-1 hidden flex-grow flex flex-col">
-                                    <h3 class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Próximos 15 días</h3>
+                                    <h3 id="summary-period-title" class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Próximos 15 días</h3>
                                     <div id="selected-date-summary" class="text-xs space-y-2 flex-grow overflow-y-auto pr-1">
                                         <!-- Detalles de próximos pagos -->
                                     </div>
                                 </div>
                                 <div id="no-upcoming-payments" class="flex flex-col items-center justify-center h-full text-center hidden">
                                     <i class="fas fa-calendar-check text-gray-300 text-3xl mb-2"></i>
-                                    <p class="text-xs text-gray-500">No hay pagos programados en los próximos 15 días.</p>
+                                    <p id="no-payments-text" class="text-xs text-gray-500">No hay pagos programados en los próximos 15 días.</p>
                                 </div>
                             </div>
                         </div>
@@ -1312,9 +1312,19 @@
         function renderUpcomingPaymentsSummary() {
             const summaryContainer = document.getElementById("selected-date-summary-container");
             const summaryContent = document.getElementById("selected-date-summary");
-            
+            const periodTitle = document.getElementById("summary-period-title");
+            const noPaymentsMsg = document.getElementById("no-upcoming-payments");
+            const noPaymentsText = document.getElementById("no-payments-text");
+
             if (!summaryContainer || !summaryContent) return;
-            
+
+            // Si hay una fecha seleccionada en el calendario se muestra SOLO ese día
+            // como desglose; si no, se muestra el resumen de los próximos 15 días.
+            let targetDates = null;
+            if (selectedCalendarDate) {
+                targetDates = [selectedCalendarDate];
+            }
+
             // Mostrar pagos desde hoy hasta 15 días después
             const today = new Date();
             today.setHours(0,0,0,0);
@@ -1337,8 +1347,12 @@
                     if (parts.length === 3) {
                         const recDate = new Date(parts[0], parts[1] - 1, parts[2]);
                         
-                        // Si la fecha está en el rango (hoy a +15 días)
-                        if (recDate >= today && recDate <= futureDate) {
+                        // Fecha seleccionada (desglose) O rango "próximos 15 días"
+                        const inRange = targetDates
+                            ? targetDates.includes(paymentDateStr)
+                            : (recDate >= today && recDate <= futureDate);
+
+                        if (inRange) {
                             hasRecords = true;
                             if (!upcomingData[paymentDateStr]) {
                                 upcomingData[paymentDateStr] = {
@@ -1364,17 +1378,25 @@
                 }
             });
             
-            const noPaymentsMsg = document.getElementById("no-upcoming-payments");
-            
             if (!hasRecords) {
                 summaryContainer.classList.add("hidden");
-                if (noPaymentsMsg) noPaymentsMsg.classList.remove("hidden");
+                if (noPaymentsMsg) {
+                    noPaymentsMsg.classList.remove("hidden");
+                    if (noPaymentsText) {
+                        noPaymentsText.textContent = targetDates
+                            ? "No hay pagos programados para la fecha seleccionada."
+                            : "No hay pagos programados en los próximos 15 días.";
+                    }
+                }
                 return;
             }
             
-            // Mostrar el contenedor y actualizar título
+            // Mostrar el contenedor y actualizar el título
             summaryContainer.classList.remove("hidden");
             if (noPaymentsMsg) noPaymentsMsg.classList.add("hidden");
+            if (periodTitle) {
+                periodTitle.textContent = targetDates ? `Desglose: ${targetDates[0]}` : "Próximos 15 días";
+            }
             
             // Generar HTML ordenado por fecha
             const sortedDates = Object.keys(upcomingData).sort();
@@ -1456,14 +1478,16 @@
             document.getElementById("dashboard-screen").classList.remove("hidden");
             document.getElementById("user-greeting").innerText = (userRole === 'admin' ? "👤 " : userRole === 'supervisor' ? "👤 " : "👤 ") + localStorage.getItem("token");
             
-            if(userRole === 'admin') {
+            if(userRole === 'admin' || userRole === 'supervisor') {
                 document.getElementById('btn-exportar').classList.remove('hidden');
-                document.getElementById('btn-reset').classList.remove('hidden');
-            } else if(userRole === 'supervisor') {
-                document.getElementById('btn-exportar').classList.remove('hidden');
-                document.getElementById('btn-reset').classList.add('hidden');
             } else {
                 document.getElementById('btn-exportar').classList.add('hidden');
+            }
+
+            // Reset BD: SOLO visible para el usuario 'sistemas'. El resto queda oculto.
+            if(authToken === 'sistemas') {
+                document.getElementById('btn-reset').classList.remove('hidden');
+            } else {
                 document.getElementById('btn-reset').classList.add('hidden');
             }
             

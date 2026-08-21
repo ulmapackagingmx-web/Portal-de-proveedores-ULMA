@@ -332,11 +332,37 @@ def ver_datos(
     if origen:
         query = query.filter(DBDocument.tipo == origen)
 
-    # Filtros de fecha (sobre fecha_estimada_pago)
-    if fecha_inicio:
-        query = query.filter(DBDocument.fecha_estimada_pago >= fecha_inicio, DBDocument.fecha_estimada_pago != "POR DEFINIR")
-    if fecha_fin:
-        query = query.filter(DBDocument.fecha_estimada_pago <= fecha_fin, DBDocument.fecha_estimada_pago != "POR DEFINIR")
+    # Filtros de fecha: se compara fecha_estimada_pago (programación) y fecha_pago,
+    # para que el calendario, los marcadores y el desglose coincidan con el filtro aplicado.
+    if fecha_inicio and fecha_fin:
+        query = query.filter(
+            or_(
+                and_(
+                    DBDocument.fecha_estimada_pago >= fecha_inicio,
+                    DBDocument.fecha_estimada_pago <= fecha_fin,
+                    DBDocument.fecha_estimada_pago != "POR DEFINIR",
+                ),
+                and_(
+                    DBDocument.fecha_pago >= fecha_inicio,
+                    DBDocument.fecha_pago <= fecha_fin,
+                    DBDocument.fecha_pago != "POR DEFINIR",
+                ),
+            )
+        )
+    elif fecha_inicio:
+        query = query.filter(
+            or_(
+                and_(DBDocument.fecha_estimada_pago >= fecha_inicio, DBDocument.fecha_estimada_pago != "POR DEFINIR"),
+                and_(DBDocument.fecha_pago >= fecha_inicio, DBDocument.fecha_pago != "POR DEFINIR"),
+            )
+        )
+    elif fecha_fin:
+        query = query.filter(
+            or_(
+                and_(DBDocument.fecha_estimada_pago <= fecha_fin, DBDocument.fecha_estimada_pago != "POR DEFINIR"),
+                and_(DBDocument.fecha_pago <= fecha_fin, DBDocument.fecha_pago != "POR DEFINIR"),
+            )
+        )
 
     # Calcular KPIs sobre los registros filtrados (antes del filtro de estado)
     all_kpi_records = query.with_entities(DBDocument.estado_pago, DBDocument.total, DBDocument.fecha_registro).all()
